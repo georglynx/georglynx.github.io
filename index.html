@@ -2,18 +2,64 @@
 <html>
 
 <head>
-  <title>shush</title> <!--title of webpage-->
+  <title>Sworthy</title> <!--title of webpage-->
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/> <!--add favicon-->
+  <link rel="stylesheet" href="style.css"> <!--connects CSS file-->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
-<body style="background-color:#121212"> <!--set background colour-->
-<font color="#ffffff"> <!--set default font colour-->
 
 <img src="/images/shush.png" alt="shush" width="364" height="105"/>
 
 <body>
-  <h1>shush &#x1F92B</h1>
-  <p>shush right now</p>
+  <header>
+    <h1>Marbles Counter &#x1F92B</h1>
+  </header>
+  
+  <main>
+    <section class="card"> <!--class acts as a label to apply the same CSS style-->
+      <canvas id="marbleChart"></canvas> <!--blank canvas which JS file can write to-->
+    </section>
+
+    <section class="card">
+      <h2>Add new entry</h2>
+      <form id="add-entry-form">
+        <div class="form-group"> <!--organisation/styling-->
+          <label for="date-input">Date</label> <!--adds label for "date-input" field-->
+          <input type="date" id="date-input" required>
+        </div>
+
+        <div class="form-group">
+          <label for="player-select">Select Player</label>
+          <select id="player-select" required>
+            <option value="" disabled selected>Choose a player...</option> <!--placeholder prompt-->
+            <option value="0">Syed</option> <!--values are the players-->
+            <option value="1">George</option>
+            <option value="2">Jan</option>
+            <option value="3">Parker</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="marble-input">New Marble Count</label>
+          <input type="number" id="marble-input" min="0" required placeholder="e.g., 12">
+        </div>
+
+        <button type="submit">Update Entry</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Rules</h2>
+      <p>Rules entered here</p>
+    </section>
+  </main>
+
+  <footer>
+    <p class="version">v0.9.0</p>
+  </footer>
+  
+  <script src="script.js"></script> <!--connects JS file (last so that all HTML is loaded first, e.g. blank canvas)-->
+
 </body>
 
 </html>

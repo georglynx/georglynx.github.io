@@ -1,0 +1,104 @@
+/*import font*/
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;700&display=swap');
+
+/*styles for the whole page*/
+body{
+    font-family: 'Public Sans', sans-serif; /*sans-serif if the imported font doesn't work*/
+    background-color: #121212;
+    color: #e0e0e0;
+    margin: 0; /*removes default margin*/
+    padding: 20px; /*manual margin*/
+}
+
+/*styles for main content area*/
+main{
+    max-width: 1000px; /*prevents the content from being too wide on large screens*/
+    margin: 0 auto; /*centres the element horizontally - 0 sets the top/bottom margin, auto calculates left/right in order to centre*/
+}
+
+/*styles for header*/
+header{
+    text-align: center;
+    margin-bottom: 30px;
+}
+h1{ /*styles all h1 text*/
+    color: #bb86fc;
+}
+
+.card h2 {
+    margin-top: 0; /*removes the default top margin for h2 inside cards, so it follows same padding rules as .card{}*/
+}
+
+
+/*styling for cards*/
+.card{
+    background-color: #1e1e1e; /*slightly lighter than background, to look layered*/
+    border-radius: 12px; /*rounded corners*/
+    padding: 16px; /*ensures text doesn't touch borders*/
+    margin-bottom: 20px; /*space between each card*/
+    border: 1px solid rgba(255, 255, 255, 0.1); /*border line */
+    transition: border-color 0.3 ease; /*transition for hover effect*/
+}
+/*hover effect for cards*/
+.card:hover{
+    border-color: rgba(255, 255, 255, 0.2); /*border slightly more visible on hover*/
+}
+
+/*styling for form*/
+.form-group{
+    margin-bottom: 16px; /*adds space between each inputer field*/
+    display: flex; /*stacks the label and input vertically*/
+    flex-direction: column; /*stacks label on top of input*/
+}
+.form-group label {
+    margin-bottom: 6px; /*space between label and input box*/
+    font-weight: bold;
+    color: #c0c0c0;
+}
+
+input[type="date"], /*changes all date and number inputs to this styling*/
+input[type="number"] {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 1rem;
+}
+
+button[type="submit"] {
+    background-color: #bb86fc;
+    color: #121212;
+    border: none;
+    border-radius: 6px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer; /*changes the cursor to a pointer on hover*/
+    transition: background-color 0.3s ease;
+    width: 100%; /*makes the buttom the full width*/
+}
+button[type="submit"]:hover {
+    background-color: #a362f7; 
+}
+
+footer {
+    text-align: center;
+    margin-top: 40px;
+    color: #6c757d;
+}
+.version {
+    font-size: 0.8rem;
+    margin-top: 8px;
+}
+
+select {
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    padding: 10px;
+    font-family: 'Public Sans', sans-serif;
+    font-size: 1rem; /*1xrem = 1xdefault font size*/
+}
