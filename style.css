@@ -16,24 +16,27 @@ main{
     margin: 0 auto; /*centres the element horizontally - 0 sets the top/bottom margin, auto calculates left/right in order to centre*/
 }
 
-/*styles for header*/
-header{
-    text-align: center;
+.title-icon { /*title icon*/
+    width: 36px;
+    height: 36px;
+}
+header{ /*styles for header*/
+    display: flex; /*uses Flexbox for alignment, meaning all children will line up side by side*/
+    justify-content: center;
+    align-items: center;
+    gap: 16px; /*creates gap between text and image*/
     margin-bottom: 30px;
 }
 h1{ /*styles all h1 text*/
     color: #e0e0e0;
 }
 
-.card h2 {
-    margin-top: 0; /*removes the default top margin for h2 inside cards, so it follows same padding rules as .card{}*/
-}
 /*styling for cards*/
 .card{
     background-color: #1e1e1e; /*slightly lighter than background, to look layered*/
     border-radius: 12px; /*rounded corners*/
     padding: 16px; /*ensures text doesn't touch borders*/
-    margin-bottom: 20px; /*space between each card*/
+    margin-bottom: 40px; /*space between each card*/
     border: 1px solid rgba(255, 255, 255, 0.1); /*border line */
     transition: border-color 0.3 ease; /*transition for hover effect*/
 }
@@ -41,7 +44,31 @@ h1{ /*styles all h1 text*/
 .card:hover{
     border-color: rgba(255, 255, 255, 0.2); /*border slightly more visible on hover*/
 }
+.card > h3 { /*this rule only targets h2s that are direct children of a .card*/
+    margin-top: 0;
+}
 
+/*RULES*/
+/*specific styling for the rules card to remove excess padding when dropdown is closed*/
+.card-rules {
+    padding: 0;
+}
+.card-rules summary {
+    cursor: pointer; /*shows that it's clickable*/
+    outline: none; /*remove the focus ring in some browsers*/
+    padding: 16px; /*reintroduce padding to the clickable part*/
+}
+.card-rules details[open] > summary { /*removes padding between Rules title and actual rules when dropdown is open*/
+    padding-bottom: 0;
+}
+.card-rules summary h3 {
+    margin: 0; /*removes the default margin for h3 inside cards, so it follows same padding rules as .card{}*/
+    display: inline; /*aligns the title with the arrow*/
+}
+.card-rules .rules-content {
+    padding: 0 16px 16px 16px; /*add padding to content, only a small amount at the top*/
+    margin: 0;
+}
 
 
 

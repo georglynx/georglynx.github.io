@@ -1,8 +1,9 @@
 //get reference to the empty canvas element in index.html, creates constant called ctx
 const ctx = document.getElementById('marbleChart');
+const barCtx = document.getElementById('marbleBarChart');
 
 //add initial data to chart
-const initialData = {
+const chartData = {
     labels: ['2025-07-19', '2025-07-22'], //x axis labels (dates)
     datasets: [ //lines on the graph (players)
         {label: 'Syed', data: [4,4], borderColor: '#008080', tension: 0.1 }, //slightly curves the line
@@ -13,10 +14,10 @@ const initialData = {
     ]
 };
 
-//create chart instance
+//create line chart instance
 const marbleChart = new Chart(ctx, { //storing chart in a variable
     type: 'line', //line graph
-    data: initialData, //defined above
+    data: chartData, //defined above
     options: {
         scales: {
             y: { //number of marbles
@@ -42,7 +43,54 @@ const marbleChart = new Chart(ctx, { //storing chart in a variable
             }
         }
     }
+});
 
+//sort players from most to least marbles, so that bar chart displays this from left to right
+let standings = chartData.datasets.map(dataset => { //combines player data into a single array of objects
+    return{
+        label: dataset.label,
+        score: dataset.data[dataset.data.length - 1], //get last entry from player marbles array
+        color: dataset.borderColor
+    }
+});
+standings.sort((a,b) => b.score - a.score); //sort the array by score in descending order
+const currentStandingsData = {
+    labels: standings.map(player => player.label),
+    datasets: [{
+        label: 'Current Mahble Count',
+        data: standings.map(player => player.score),
+        backgroundColor: standings.map(player => player.color) //reuse colors from line graph
+    }]
+};
+//create bar chart instance
+const marbleBarChart = new Chart(barCtx, {
+    type: 'bar',
+    data: currentStandingsData,
+    options: {
+        scales: {
+            y: {
+                beginAtZero: true,
+                grid: {color: 'rgba(255,255,255,0.1)'},
+                ticks: {
+                    color: '#e0e0e0',
+                    precision: 0,
+                    font: {size: 16}
+                }
+            },
+            x: {
+                grid: {display:false}, //hiding grid lines
+                ticks: {
+                    color: '#e0e0e0',
+                    font: {size: 16}
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false //player names are on x axis, so legend isn't required
+            }
+        }
+    }
 });
 
 
