@@ -3,33 +3,13 @@ const ctx = document.getElementById('marbleChart');
 
 //add initial data to chart
 const initialData = {
-    labels: ['2025-07-21', '2025-07-28'], //x axis labels (dates)
-
+    labels: ['2025-07-19', '2025-07-22'], //x axis labels (dates)
     datasets: [ //lines on the graph (players)
-        {
-            label: 'Syed',
-            data: [4,4],
-            borderColor: '#36a2eb', //blue
-            tension: 0.1 //slightly curves the line
-        },
-        {
-            label: 'George',
-            data: [3,3],
-            borderColor: '#ff6384', //red
-            tension: 0.1
-        },
-        {
-            label: 'Jan',
-            data: [2,3],
-            borderColor: '#4bc0c0', //teal
-            tension: 0.1
-        },
-        {
-            label: 'Parker',
-            data: [1,0],
-            borderColor: '#ffcd56', //yellow
-            tension: 0.1
-        },
+        {label: 'Syed', data: [4,4], borderColor: '#008080', tension: 0.1 }, //slightly curves the line
+        {label: 'George', data: [3,3], borderColor: '#cf002dff', tension: 0.1},
+        {label: 'Jan', data: [2,4], borderColor: '#44cb68ff', tension: 0.1},
+        {label: 'Parker', data: [1,-1], borderColor: '#AE93E5', tension: 0.1},
+        {label: 'Jaz', data: [0,0], borderColor: '#8b9ad9', tension: 0.1}
     ]
 };
 
@@ -41,21 +21,17 @@ const marbleChart = new Chart(ctx, { //storing chart in a variable
         scales: {
             y: { //number of marbles
                 beginAtZero: true,
-                grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                },
+                grid: {color: 'rgba(255, 255, 255, 0.1)'},
                 ticks: { //labels
-                    color: '#e0e0e0'
+                    color: '#e0e0e0',
+                    precision: 0, //only whole numbers
+                    font: {size: 16}
                 }
             },
-            x: { //number of marbles
+            x: { //date
                 beginAtZero: true,
-                grid: {
-                    color: 'rgba(255, 255, 255, 0.1)'
-                },
-                ticks: { //labels
-                    color: '#e0e0e0'
-                }
+                grid: {color: 'rgba(255, 255, 255, 0.1)'},
+                ticks: {color: '#e0e0e0'}
             }
         },
         plugins: {
@@ -68,6 +44,9 @@ const marbleChart = new Chart(ctx, { //storing chart in a variable
     }
 
 });
+
+
+//BELOW NOT CURRENTLY APPLICABLE ON STATIC PAGE
 
 //event listener for form submission
 const form = document.getElementById('add-entry-form'); //create reference to form in html

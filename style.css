@@ -12,7 +12,7 @@ body{
 
 /*styles for main content area*/
 main{
-    max-width: 1000px; /*prevents the content from being too wide on large screens*/
+    max-width: 800px; /*prevents the content from being too wide on large screens*/
     margin: 0 auto; /*centres the element horizontally - 0 sets the top/bottom margin, auto calculates left/right in order to centre*/
 }
 
@@ -22,14 +22,12 @@ header{
     margin-bottom: 30px;
 }
 h1{ /*styles all h1 text*/
-    color: #bb86fc;
+    color: #e0e0e0;
 }
 
 .card h2 {
     margin-top: 0; /*removes the default top margin for h2 inside cards, so it follows same padding rules as .card{}*/
 }
-
-
 /*styling for cards*/
 .card{
     background-color: #1e1e1e; /*slightly lighter than background, to look layered*/
@@ -43,6 +41,11 @@ h1{ /*styles all h1 text*/
 .card:hover{
     border-color: rgba(255, 255, 255, 0.2); /*border slightly more visible on hover*/
 }
+
+
+
+
+/*BELOW NOT CURRENTLY APPLICABLE ON STATIC PAGE*/
 
 /*styling for form*/
 .form-group{
