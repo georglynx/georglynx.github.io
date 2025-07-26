@@ -4,13 +4,13 @@ const barCtx = document.getElementById('marbleBarChart');
 
 //add initial data to chart
 const chartData = {
-    labels: ['2025-07-19', '2025-07-22'], //x axis labels (dates)
+    labels: ['2025-07-19', '2025-07-22', '2025-07-26'], //x axis labels (dates)
     datasets: [ //lines on the graph (players)
-        {label: 'Syed', data: [4,4], borderColor: '#008080', tension: 0.1 }, //slightly curves the line
-        {label: 'George', data: [3,3], borderColor: '#cf002dff', tension: 0.1},
-        {label: 'Jan', data: [2,4], borderColor: '#44cb68ff', tension: 0.1},
-        {label: 'Parker', data: [1,-1], borderColor: '#AE93E5', tension: 0.1},
-        {label: 'Jaz', data: [0,0], borderColor: '#8b9ad9', tension: 0.1}
+        {label: 'Syed', data: [4,4,4], borderColor: '#008080', tension: 0.1 }, //slightly curves the line
+        {label: 'George', data: [3,3,3], borderColor: '#cf002dff', tension: 0.1},
+        {label: 'Jan', data: [2,4,5], borderColor: '#e98935ff', tension: 0.1},
+        {label: 'Parker', data: [1,-1,0], borderColor: '#AE93E5', tension: 0.1},
+        {label: 'Jaz', data: [0,0,0], borderColor: '#8b9ad9', tension: 0.1}
     ]
 };
 
