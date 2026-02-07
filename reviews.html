@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reviews - georglynx</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  
+  <main>
+    <header class="page-header">
+      <h1>Reviews</h1>
+    </header>
+
+    <!-- Filter Buttons -->
+    <div class="filter-container">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="games">Games</button>
+      <button class="filter-btn" data-filter="movies">Movies</button>
+      <button class="filter-btn" data-filter="books">Books</button>
+    </div>
+
+    <!-- Reviews will be dynamically loaded here -->
+    <div id="reviews-container">
+      <!-- JavaScript will populate this -->
+    </div>
+
+    <!-- Loading state -->
+    <div id="loading-state" class="card" style="text-align: center;">
+      <p>Loading reviews...</p>
+    </div>
+
+    <!-- Empty state -->
+    <div id="empty-state" class="card" style="text-align: center; display: none;">
+      <h3>No reviews yet</h3>
+      <p>Check back soon for reviews of games, movies, and books.</p>
+    </div>
+  </main>
+
+  <footer>
+    <p class="version">v2.0.0</p>
+  </footer>
+
+  <script src="navigation.js"></script>
+  <script src="reviews.js"></script>
+</body>
+
+</html>

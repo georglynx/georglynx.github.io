@@ -1,48 +1,34 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <title>Mahbles</title> <!--title of webpage-->
-  <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/> <!--add favicon-->
-  <link rel="stylesheet" href="style.css"> <!--connects CSS file-->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>georglynx</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
+  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <header>
-    <h1>Mahbles Counter</h1>
-    <img src="/images/w-server.png" alt="logo" class="title-icon">
-  </header>
   
   <main>
-    <section class="card">
-      <canvas id="marbleBarChart"></canvas>
-    </section>
-
-    <section class="card"> <!--class acts as a label to apply the same CSS style-->
-      <canvas id="marbleChart"></canvas> <!--blank canvas which JS file can write to-->
-    </section>
-
-    <section class="card card-rules">
-      <details>
-        <summary><h3>Rules</h3></summary>
-        <p class="rules-content"><ul>
-          <li>Mahbles are created during Mahble Games</li>
-          <li>Mahble Games can only occur once per night</li>
-          <li>Mahble Games can only occur with 3+ players</li>
-          <li>n/2 Mahbles, rounded down, are created and won during Mahble Games (e.g. 1 during 3 player games, 2 during 4 player games)</li>
-          <li>Earned Mahbles may be bet in a Betting Mahble Game</li>
-        </ul></p>
-      </details>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-content">
+        <h1 class="hero-title">georglynx</h1>
+        <p class="hero-subtitle">Work in Progress</p>
+        <p class="hero-description">
+          Building a space for projects and experiments. Check back soon.
+        </p>
+      </div>
     </section>
   </main>
 
   <footer>
-    <p class="version">v1.1.1</p>
+    <p class="version">v2.0.0</p>
   </footer>
-  
-  <script src="script.js"></script> <!--connects JS file (last so that all HTML is loaded first, e.g. blank canvas)-->
 
+  <script src="navigation.js"></script>
 </body>
 
 </html>

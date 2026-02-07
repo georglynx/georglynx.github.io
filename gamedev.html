@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Game Dev - georglynx</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  
+  <main>
+    <header class="page-header">
+      <h1>Game Development</h1>
+    </header>
+
+    <!-- Projects will be dynamically loaded here -->
+    <div id="projects-container" class="projects-grid">
+      <!-- JavaScript will populate this -->
+    </div>
+
+    <!-- Empty state when no projects -->
+    <div id="empty-state" class="card" style="text-align: center; display: none;">
+      <h3>No projects yet</h3>
+      <p>Check back soon for game development projects and prototypes.</p>
+    </div>
+  </main>
+
+  <footer>
+    <p class="version">v2.0.0</p>
+  </footer>
+
+  <script src="navigation.js"></script>
+  <script src="gamedev.js"></script>
+</body>
+
+</html>

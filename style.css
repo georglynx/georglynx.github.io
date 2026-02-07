@@ -1,134 +1,708 @@
 /*import font*/
-@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap');
 
-/*styles for the whole page*/
-body{
-    font-family: 'Public Sans', sans-serif; /*sans-serif if the imported font doesn't work*/
-    background-color: #121212;
-    color: #e0e0e0;
-    margin: 0; /*removes default margin*/
-    padding: 20px; /*manual margin*/
-}
+/* ========================================
+   GLOBAL STYLES
+   ======================================== */
 
-/*styles for main content area*/
-main{
-    max-width: 800px; /*prevents the content from being too wide on large screens*/
-    margin: 0 auto; /*centres the element horizontally - 0 sets the top/bottom margin, auto calculates left/right in order to centre*/
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
-.title-icon { /*title icon*/
-    width: 36px;
-    height: 36px;
-}
-header{ /*styles for header*/
-    display: flex; /*uses Flexbox for alignment, meaning all children will line up side by side*/
-    justify-content: center;
-    align-items: center;
-    gap: 16px; /*creates gap between text and image*/
-    margin-bottom: 30px;
-}
-h1{ /*styles all h1 text*/
-    color: #e0e0e0;
+:root {
+    /* Color Palette */
+    --bg-primary: #121212;
+    --bg-secondary: #1e1e1e;
+    --bg-tertiary: #2c2c2c;
+    --text-primary: #e0e0e0;
+    --text-secondary: #c0c0c0;
+    --text-muted: #6c757d;
+    --accent-primary: #bb86fc;
+    --accent-hover: #a362f7;
+    --border-subtle: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.2);
+    
+    /* Spacing */
+    --spacing-xs: 8px;
+    --spacing-sm: 16px;
+    --spacing-md: 24px;
+    --spacing-lg: 40px;
+    --spacing-xl: 60px;
 }
 
-/*styling for cards*/
-.card{
-    background-color: #1e1e1e; /*slightly lighter than background, to look layered*/
-    border-radius: 12px; /*rounded corners*/
-    padding: 16px; /*ensures text doesn't touch borders*/
-    margin-bottom: 40px; /*space between each card*/
-    border: 1px solid rgba(255, 255, 255, 0.1); /*border line */
-    transition: border-color 0.3 ease; /*transition for hover effect*/
+body {
+    font-family: 'Public Sans', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
 }
-/*hover effect for cards*/
-.card:hover{
-    border-color: rgba(255, 255, 255, 0.2); /*border slightly more visible on hover*/
+
+main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: var(--spacing-md);
 }
-.card > h3 { /*this rule only targets h2s that are direct children of a .card*/
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
     margin-top: 0;
 }
 
-/*RULES*/
-/*specific styling for the rules card to remove excess padding when dropdown is closed*/
-.card-rules {
+a {
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+/* ========================================
+   NAVIGATION BAR
+   ======================================== */
+
+.navbar {
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-subtle);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    padding: 0 var(--spacing-md);
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 64px;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-logo {
+    width: 32px;
+    height: 32px;
+}
+
+.nav-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.nav-menu {
+    display: flex;
+    gap: var(--spacing-xs);
+    list-style: none;
+    margin: 0;
     padding: 0;
 }
-.card-rules summary {
-    cursor: pointer; /*shows that it's clickable*/
-    outline: none; /*remove the focus ring in some browsers*/
-    padding: 16px; /*reintroduce padding to the clickable part*/
-}
-.card-rules details[open] > summary { /*removes padding between Rules title and actual rules when dropdown is open*/
-    padding-bottom: 0;
-}
-.card-rules summary h3 {
-    margin: 0; /*removes the default margin for h3 inside cards, so it follows same padding rules as .card{}*/
-    display: inline; /*aligns the title with the arrow*/
-}
-.card-rules .rules-content {
-    padding: 0 16px 16px 16px; /*add padding to content, only a small amount at the top*/
-    margin: 0;
-}
 
-
-
-/*BELOW NOT CURRENTLY APPLICABLE ON STATIC PAGE*/
-
-/*styling for form*/
-.form-group{
-    margin-bottom: 16px; /*adds space between each inputer field*/
-    display: flex; /*stacks the label and input vertically*/
-    flex-direction: column; /*stacks label on top of input*/
-}
-.form-group label {
-    margin-bottom: 6px; /*space between label and input box*/
-    font-weight: bold;
-    color: #c0c0c0;
-}
-
-input[type="date"], /*changes all date and number inputs to this styling*/
-input[type="number"] {
-    background-color: #2c2c2c;
-    color: #e0e0e0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+.nav-link {
+    display: block;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    color: var(--text-secondary);
     border-radius: 6px;
-    padding: 10px;
-    font-family: 'Public Sans', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.nav-link:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.nav-link.active {
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    color: var(--bg-primary);
+    font-weight: 600;
+}
+
+/* Mobile Hamburger Menu */
+.nav-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: var(--spacing-xs);
+}
+
+.hamburger {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background-color: var(--text-primary);
+    position: relative;
+    transition: background-color 0.3s ease;
+}
+
+.hamburger::before,
+.hamburger::after {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 2px;
+    background-color: var(--text-primary);
+    transition: transform 0.3s ease;
+}
+
+.hamburger::before {
+    top: -8px;
+}
+
+.hamburger::after {
+    top: 8px;
+}
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+    .nav-toggle {
+        display: block;
+    }
+
+    .nav-menu {
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-secondary);
+        flex-direction: column;
+        gap: 0;
+        padding: var(--spacing-sm);
+        border-bottom: 1px solid var(--border-subtle);
+        display: none;
+    }
+
+    .nav-menu.active {
+        display: flex;
+    }
+
+    .nav-link {
+        padding: 12px var(--spacing-sm);
+    }
+}
+
+/* ========================================
+   PAGE HEADERS
+   ======================================== */
+
+.page-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+}
+
+.title-icon {
+    width: 36px;
+    height: 36px;
+}
+
+/* ========================================
+   HERO SECTION (Homepage)
+   ======================================== */
+
+.hero {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+    margin-bottom: var(--spacing-lg);
+}
+
+.hero-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: var(--spacing-sm);
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.hero-description {
     font-size: 1rem;
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto var(--spacing-lg) auto;
+    line-height: 1.8;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.btn {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: none;
+}
+
+.btn-primary {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--accent-primary);
+    border: 2px solid var(--accent-primary);
+}
+
+.btn-secondary:hover {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
 }
 
 button[type="submit"] {
-    background-color: #bb86fc;
-    color: #121212;
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
     border: none;
     border-radius: 6px;
-    padding: 12px 16px;
+    padding: 12px var(--spacing-sm);
     font-size: 1rem;
     font-weight: bold;
-    cursor: pointer; /*changes the cursor to a pointer on hover*/
+    cursor: pointer;
     transition: background-color 0.3s ease;
-    width: 100%; /*makes the buttom the full width*/
+    width: 100%;
 }
+
 button[type="submit"]:hover {
-    background-color: #a362f7; 
+    background-color: var(--accent-hover);
 }
 
-footer {
-    text-align: center;
-    margin-top: 40px;
-    color: #6c757d;
-}
-.version {
-    font-size: 0.8rem;
-    margin-top: 8px;
+/* ========================================
+   CARDS
+   ======================================== */
+
+.card {
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid var(--border-subtle);
+    transition: border-color 0.3s ease, transform 0.3s ease;
 }
 
+.card:hover {
+    border-color: var(--border-hover);
+}
+
+.card > h2,
+.card > h3 {
+    margin-top: 0;
+}
+
+/* ========================================
+   PROJECT CARDS
+   ======================================== */
+
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.project-card {
+    background-color: var(--bg-tertiary);
+    padding: var(--spacing-md);
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+    transition: all 0.3s ease;
+}
+
+.project-card:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.2);
+}
+
+.project-card h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-xs);
+    color: var(--text-primary);
+}
+
+.project-card p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+    font-size: 0.9rem;
+}
+
+.project-link {
+    color: var(--accent-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.project-link:hover {
+    color: var(--accent-hover);
+}
+
+/* ========================================
+   RULES SECTION (Mahbles specific)
+   ======================================== */
+
+.card-rules {
+    padding: 0;
+}
+
+.card-rules summary {
+    cursor: pointer;
+    outline: none;
+    padding: var(--spacing-sm);
+}
+
+.card-rules details[open] > summary {
+    padding-bottom: 0;
+}
+
+.card-rules summary h3 {
+    margin: 0;
+    display: inline;
+}
+
+.card-rules .rules-content {
+    padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
+    margin: 0;
+}
+
+.card-rules ul {
+    margin: var(--spacing-sm) 0;
+}
+
+.card-rules li {
+    margin-bottom: var(--spacing-xs);
+}
+
+/* ========================================
+   FORMS
+   ======================================== */
+
+.form-group {
+    margin-bottom: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+input[type="date"],
+input[type="number"],
+input[type="text"],
+input[type="email"],
 select {
-    background-color: #2c2c2c;
-    color: #e0e0e0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-hover);
     border-radius: 6px;
     padding: 10px;
     font-family: 'Public Sans', sans-serif;
-    font-size: 1rem; /*1xrem = 1xdefault font size*/
+    font-size: 1rem;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+}
+
+/* ========================================
+   FOOTER
+   ======================================== */
+
+footer {
+    text-align: center;
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-lg) 0;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-subtle);
+}
+
+.version {
+    font-size: 0.8rem;
+    margin: var(--spacing-xs) 0;
+}
+
+.footer-text {
+    font-size: 0.9rem;
+    margin: var(--spacing-xs) 0;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .project-grid {
+        grid-template-columns: 1fr;
+    }
+
+    main {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* ========================================
+   REVIEWS PAGE
+   ======================================== */
+
+.filter-container {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 10px 20px;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.filter-btn.active {
+    background-color: var(--accent-primary);
+    color: var(--bg-primary);
+    border-color: var(--accent-primary);
+}
+
+.review-card {
+    margin-bottom: var(--spacing-md);
+}
+
+.review-header {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.review-image-container {
+    flex-shrink: 0;
+    width: 100px;
+    height: 140px;
+    border-radius: 8px;
+    overflow: hidden;
+    background-color: var(--bg-tertiary);
+}
+
+.review-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.review-image-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    opacity: 0.3;
+}
+
+.review-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.review-info h3 {
+    margin: 0 0 var(--spacing-xs) 0;
+    font-size: 1.2rem;
+}
+
+.review-meta {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.review-type-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.review-rating {
+    color: #ffa500;
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+}
+
+.rating-number {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-left: 6px;
+}
+
+.review-text {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: var(--spacing-xs);
+}
+
+.review-date {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* ========================================
+   GAME DEV PAGE
+   ======================================== */
+
+.projects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.project-card-large {
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.project-card-large:hover {
+    border-color: var(--accent-primary);
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2);
+}
+
+.project-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+}
+
+.project-image-placeholder {
+    width: 100%;
+    height: 200px;
+    background: linear-gradient(135deg, #ff6b6b, #ffa500);
+    opacity: 0.3;
+}
+
+.project-content {
+    padding: var(--spacing-md);
+}
+
+.project-content h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-xs);
+}
+
+.project-content p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.project-tags {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-sm);
+}
+
+.tag {
+    padding: 4px 10px;
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.project-content .project-link {
+    color: var(--accent-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.project-content .project-link:hover {
+    color: var(--accent-hover);
+}
+
+/* Mobile adjustments for reviews */
+@media (max-width: 600px) {
+    .review-header {
+        flex-direction: column;
+    }
+
+    .review-image-container {
+        width: 100%;
+        height: 200px;
+    }
+
+    .filter-container {
+        justify-content: center;
+    }
+
+    .projects-grid {
+        grid-template-columns: 1fr;
+    }
 }
