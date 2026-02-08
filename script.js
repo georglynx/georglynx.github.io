@@ -570,7 +570,7 @@ function useDefaultData() {
     allGames = [
         {
             date: "2025-07-19",
-            game: "Tetrio",
+            game: "Reset",
             results: [
                 { player: "Syed", score: 4 },
                 { player: "George", score: 3 },
@@ -603,7 +603,7 @@ function useDefaultData() {
         },
         {
             date: "2025-08-25",
-            game: "Tetrio",
+            game: "Bobble League",
             results: [
                 { player: "Syed", score: 4 },
                 { player: "George", score: 5.5 },
