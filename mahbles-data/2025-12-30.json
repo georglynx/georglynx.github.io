@@ -1,0 +1,12 @@
+{
+  "date": "2025-12-30",
+  "game": "Bobble League",
+  "results": [
+    { "player": "Syed", "score": 8 },
+    { "player": "George", "score": 7.5 },
+    { "player": "Jan", "score": 5 },
+    { "player": "Parker", "score": 7.5 },
+    { "player": "Jaz", "score": 1 },
+    { "player": "Dyl", "score": 3 }
+  ]
+}

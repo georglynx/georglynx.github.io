@@ -1,0 +1,12 @@
+{
+  "date": "2025-10-17",
+  "game": "Pool",
+  "results": [
+    { "player": "Syed", "score": 6 },
+    { "player": "George", "score": 5.5 },
+    { "player": "Jan", "score": 2 },
+    { "player": "Parker", "score": 2.5 },
+    { "player": "Jaz", "score": 0 },
+    { "player": "Dyl", "score": 2 }
+  ]
+}
