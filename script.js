@@ -74,7 +74,7 @@ async function loadAllGames() {
 
 async function loadIndividualGames() {
     // Fetch list of files from GitHub API
-    const response = await fetch('https://api.github.com/repos/YOUR-USERNAME/YOUR-REPO-NAME/contents/mahbles-data');
+    const response = await fetch('https://api.github.com/repos/georglynx/georglynx.github.io/contents/mahbles-data');
     const files = await response.json();
     
     // Fetch each game file
