@@ -1,0 +1,11 @@
+{
+  "date": "2025-08-25",
+  "game": "Tetrio",
+  "results": [
+    { "player": "Syed", "score": 4 },
+    { "player": "George", "score": 5.5 },
+    { "player": "Jan", "score": 0 },
+    { "player": "Parker", "score": 2.5 },
+    { "player": "Jaz", "score": 0 }
+  ]
+}

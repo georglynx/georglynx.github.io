@@ -706,3 +706,112 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+/* ========================================
+   GAME HISTORY TIMELINE (MAHBLES)
+   ======================================== */
+
+.game-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.game-history-item {
+    padding: var(--spacing-sm);
+}
+
+.game-history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.game-date {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.game-name {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.game-history-results {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.game-result {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 6px 12px;
+    background-color: var(--bg-tertiary);
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.game-result.positive-change {
+    background-color: rgba(82, 183, 136, 0.2);
+    border: 1px solid rgba(82, 183, 136, 0.4);
+}
+
+.game-result.negative-change {
+    background-color: rgba(255, 107, 107, 0.2);
+    border: 1px solid rgba(255, 107, 107, 0.4);
+}
+
+.game-result.no-change {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-subtle);
+}
+
+.player-name {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.player-change {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.game-notes {
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-xs);
+    background-color: rgba(187, 134, 252, 0.1);
+    border-left: 3px solid var(--accent-primary);
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.btn-secondary {
+    width: 100%;
+    margin-top: var(--spacing-sm);
+    padding: 12px 24px;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-hover);
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-primary);
+}
+
+#all-games-container {
+    margin-top: var(--spacing-sm);
+}

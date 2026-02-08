@@ -1,131 +1,626 @@
-//get reference to the empty canvas element in index.html, creates constant called ctx
-const ctx = document.getElementById('marbleChart');
-const barCtx = document.getElementById('marbleBarChart');
+// ============================================
+// MAHBLES COUNTER - DYNAMIC SYSTEM
+// ============================================
 
-//add initial data to chart
-const chartData = {
-    labels: ['2025-07-19', '2025-07-22', '2025-07-26', '2025-08-25'], //x axis labels (dates)
-    datasets: [ //lines on the graph (players)
-        {label: 'Syed', data: [4,4,4,4], borderColor: '#008080', tension: 0.1 }, //slightly curves the line
-        {label: 'George', data: [3,3,3,5.5], borderColor: '#cf002dff', tension: 0.1},
-        {label: 'Jan', data: [2,4,5,0], borderColor: '#e98935ff', tension: 0.1},
-        {label: 'Parker', data: [1,-1,0,2.5], borderColor: '#AE93E5', tension: 0.1},
-        {label: 'Jaz', data: [0,0,0,0], borderColor: '#8b9ad9', tension: 0.1}
-    ]
-};
+// Color pool for new players
+const COLOR_POOL = [
+    '#008080', '#cf002dff', '#e98935ff', '#AE93E5', '#8b9ad9',
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+    '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B739', '#52B788'
+];
 
-//create line chart instance
-const marbleChart = new Chart(ctx, { //storing chart in a variable
-    type: 'line', //line graph
-    data: chartData, //defined above
-    options: {
-        scales: {
-            y: { //number of marbles
-                beginAtZero: true,
-                grid: {color: 'rgba(255, 255, 255, 0.1)'},
-                ticks: { //labels
-                    color: '#e0e0e0',
-                    precision: 0, //only whole numbers
-                    font: {size: 16}
-                }
-            },
-            x: { //date
-                beginAtZero: true,
-                grid: {color: 'rgba(255, 255, 255, 0.1)'},
-                ticks: {color: '#e0e0e0'}
-            }
-        },
-        plugins: {
-            legend: { //legend text
-                labels: {
-                    color: '#e0e0e0'
-                }
-            }
+let playerColors = {};
+let allGames = [];
+let allPlayers = new Set();
+
+// ============================================
+// DATA LOADING
+// ============================================
+
+async function loadMahblesData() {
+    try {
+        // Load player colors
+        await loadPlayerColors();
+        
+        // Load all game data
+        await loadAllGames();
+        
+        // Render all visualizations
+        renderAllCharts();
+        renderGameHistory();
+        
+    } catch (error) {
+        console.error('Error loading Mahbles data:', error);
+        // Fallback to default data
+        useDefaultData();
+    }
+}
+
+async function loadPlayerColors() {
+    try {
+        const response = await fetch('player-colors.json');
+        playerColors = await response.json();
+    } catch (error) {
+        console.warn('Could not load player colors, using defaults');
+        playerColors = {};
+    }
+}
+
+async function loadAllGames() {
+    try {
+        // Try to load aggregated file first (faster)
+        const response = await fetch('mahbles-all.json');
+        if (response.ok) {
+            allGames = await response.json();
+        } else {
+            // Fallback: load individual files from GitHub API
+            await loadIndividualGames();
         }
+        
+        // Sort by date
+        allGames.sort((a, b) => new Date(a.date) - new Date(b.date));
+        
+        // Validate for duplicate dates
+        validateDuplicateDates();
+        
+        // Discover all players
+        discoverPlayers();
+        
+    } catch (error) {
+        console.error('Error loading games:', error);
+        throw error;
     }
-});
+}
 
-//sort players from most to least marbles, so that bar chart displays this from left to right
-let standings = chartData.datasets.map(dataset => { //combines player data into a single array of objects
-    return{
-        label: dataset.label,
-        score: dataset.data[dataset.data.length - 1], //get last entry from player marbles array
-        color: dataset.borderColor
+async function loadIndividualGames() {
+    // Fetch list of files from GitHub API
+    const response = await fetch('https://api.github.com/repos/YOUR-USERNAME/YOUR-REPO-NAME/contents/mahbles-data');
+    const files = await response.json();
+    
+    // Fetch each game file
+    const gamePromises = files
+        .filter(file => file.name.endsWith('.json'))
+        .map(file => fetch(file.download_url).then(r => r.json()));
+    
+    allGames = await Promise.all(gamePromises);
+}
+
+function discoverPlayers() {
+    allPlayers.clear();
+    allGames.forEach(game => {
+        game.results.forEach(result => {
+            const normalizedName = normalizePlayerName(result.player);
+            allPlayers.add(normalizedName);
+            result.player = normalizedName; // Update in place
+        });
+    });
+}
+
+function validateDuplicateDates() {
+    const dates = allGames.map(g => g.date);
+    const duplicates = dates.filter((date, index) => dates.indexOf(date) !== index);
+    
+    if (duplicates.length > 0) {
+        console.warn('⚠️ Duplicate game dates found:', duplicates);
     }
-});
-standings.sort((a,b) => b.score - a.score); //sort the array by score in descending order
-const currentStandingsData = {
-    labels: standings.map(player => player.label),
-    datasets: [{
-        label: 'Current Mahble Count',
-        data: standings.map(player => player.score),
-        backgroundColor: standings.map(player => player.color) //reuse colors from line graph
-    }]
-};
-//create bar chart instance
-const marbleBarChart = new Chart(barCtx, {
-    type: 'bar',
-    data: currentStandingsData,
-    options: {
-        scales: {
-            y: {
-                beginAtZero: true,
-                grid: {color: 'rgba(255,255,255,0.1)'},
-                ticks: {
-                    color: '#e0e0e0',
-                    precision: 0,
-                    font: {size: 16}
-                }
-            },
-            x: {
-                grid: {display:false}, //hiding grid lines
-                ticks: {
-                    color: '#e0e0e0',
-                    font: {size: 16}
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                display: false //player names are on x axis, so legend isn't required
-            }
-        }
+}
+
+// ============================================
+// NORMALIZATION & UTILITIES
+// ============================================
+
+function normalizePlayerName(name) {
+    // Capitalize first letter of each word, trim whitespace
+    return name.trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}
+
+function normalizeGameName(name) {
+    // Lowercase and trim
+    return name.toLowerCase().trim();
+}
+
+function getPlayerColor(playerName) {
+    const normalized = normalizePlayerName(playerName);
+    
+    if (playerColors[normalized]) {
+        return playerColors[normalized];
     }
-});
-
-
-//BELOW NOT CURRENTLY APPLICABLE ON STATIC PAGE
-
-//event listener for form submission
-const form = document.getElementById('add-entry-form'); //create reference to form in html
-form.addEventListener('submit', function(event) { //function will run everytime "Update Entry" is clicked (submit button)
-    event.preventDefault(); //prevents page from reloading - this normally happens by default when a form is submitted
-    const dateInput = document.getElementById('date-input').value; //gets our input elements, .value gets inputted value
-    const playerIndex = document.getElementById('player-select').value;
-    const marbleCount = parseInt(document.getElementById('marble-input').value); //parseInt makes sure it is treated as a number
-
-    if (playerIndex === "") { //player validation
-        alert("Please select a player.");
-        return; //stops function
+    
+    // Assign new color from pool
+    const usedColors = Object.values(playerColors);
+    const availableColors = COLOR_POOL.filter(c => !usedColors.includes(c));
+    
+    if (availableColors.length > 0) {
+        playerColors[normalized] = availableColors[0];
+    } else {
+        // Fallback: generate random color
+        playerColors[normalized] = '#' + Math.floor(Math.random()*16777215).toString(16);
     }
+    
+    return playerColors[normalized];
+}
 
-    const dateIndex = marbleChart.data.labels.indexOf(dateInput); //finds if date already exists in graph, does index search of marbleChart.data.labels based on user input, returns position in array
+function getPlayerFirstGameIndex(playerName) {
+    return allGames.findIndex(game => 
+        game.results.some(r => r.player === playerName)
+    );
+}
 
-    if(dateIndex !== -1) { //i.e. if the date inputted already exists (it returns a -1 in the array if it does not)
-        marbleChart.data.datasets[playerIndex].data[dateIndex] = marbleCount; //in the chart's data, go to datasets array, find the line for correct player, go to that line's data array, find the point for the correct date, set it to new value
-    } else { //if date is new
-        marbleChart.data.labels.push(dateInput); //add new date to the labels array so it shows on graph
+function getPlayerScoreAtGame(playerName, gameIndex) {
+    const game = allGames[gameIndex];
+    const result = game.results.find(r => r.player === playerName);
+    return result ? result.score : null;
+}
 
-        marbleChart.data.datasets.forEach((dataset, index) => { //updates values
-            if (index == playerIndex) { //for new player
-                dataset.data.push(marbleCount); //adds new value
+// Build complete score history for a player
+function buildPlayerHistory(playerName) {
+    const history = [];
+    const firstGameIndex = getPlayerFirstGameIndex(playerName);
+    
+    allGames.forEach((game, index) => {
+        if (index < firstGameIndex) {
+            // Player hasn't joined yet - don't show on chart
+            history.push(null);
+        } else {
+            const score = getPlayerScoreAtGame(playerName, index);
+            if (score !== null) {
+                history.push(score);
             } else {
-                const lastValue = dataset.data.length > 0 ? dataset.data[dataset.data.length - 1] : 0; //for all other plays, add their same value for the new date, so the lines on the graph match up
-                dataset.data.push(lastValue);
+                // Player didn't play this game - carry forward last score
+                history.push(history[history.length - 1] || 0);
+            }
+        }
+    });
+    
+    return history;
+}
+
+// ============================================
+// CHART 1: CURRENT STANDINGS (BAR CHART)
+// ============================================
+
+function renderCurrentStandings(chartData) {
+    const barCtx = document.getElementById('marbleBarChart');
+    if (!barCtx) return;
+    
+    // Get current scores (last game)
+    const lastGame = allGames[allGames.length - 1];
+    let standings = lastGame.results.map(result => ({
+        player: result.player,
+        score: result.score,
+        color: getPlayerColor(result.player)
+    }));
+    
+    // Sort by score descending
+    standings.sort((a, b) => b.score - a.score);
+    
+    new Chart(barCtx, {
+        type: 'bar',
+        data: {
+            labels: standings.map(s => s.player),
+            datasets: [{
+                label: 'Current Mahble Count',
+                data: standings.map(s => s.score),
+                backgroundColor: standings.map(s => s.color)
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: {
+                        color: '#e0e0e0',
+                        precision: 0,
+                        font: { size: 16 }
+                    }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: {
+                        color: '#e0e0e0',
+                        font: { size: 16 }
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: 'Current Standings',
+                    color: '#e0e0e0',
+                    font: { size: 18, weight: 'bold' }
+                }
+            }
+        }
+    });
+}
+
+// ============================================
+// CHART 2: LINE CHART (OVER TIME)
+// ============================================
+
+function renderLineChart() {
+    const ctx = document.getElementById('marbleChart');
+    if (!ctx) return;
+    
+    const dates = allGames.map(g => g.date);
+    const games = allGames.map(g => normalizeGameName(g.game));
+    
+    const datasets = Array.from(allPlayers).map(playerName => ({
+        label: playerName,
+        data: buildPlayerHistory(playerName),
+        borderColor: getPlayerColor(playerName),
+        backgroundColor: getPlayerColor(playerName) + '20',
+        tension: 0.1,
+        spanGaps: false // Don't connect across null values
+    }));
+    
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: {
+                        color: '#e0e0e0',
+                        precision: 0,
+                        font: { size: 16 }
+                    }
+                },
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: {
+                        color: '#e0e0e0',
+                        font: { size: 12 },
+                        callback: function(value, index) {
+                            // Show date and game name
+                            return [dates[index], games[index]];
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#e0e0e0', font: { size: 14 } }
+                },
+                title: {
+                    display: true,
+                    text: 'Mahbles Over Time',
+                    color: '#e0e0e0',
+                    font: { size: 18, weight: 'bold' }
+                },
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            const index = context[0].dataIndex;
+                            return `${dates[index]} - ${allGames[index].game}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ============================================
+// CHART 3: STACKED BAR (BY GAME SOURCE)
+// ============================================
+
+function renderStackedBarChart() {
+    const stackedCtx = document.getElementById('marbleStackedChart');
+    if (!stackedCtx) return;
+    
+    // Get unique games
+    const uniqueGames = [...new Set(allGames.map(g => normalizeGameName(g.game)))];
+    
+    // Calculate Mahbles earned from each game type per player
+    const playerGameData = {};
+    
+    Array.from(allPlayers).forEach(player => {
+        playerGameData[player] = {};
+        uniqueGames.forEach(game => {
+            playerGameData[player][game] = 0;
+        });
+    });
+    
+    // Calculate earned Mahbles per game
+    allGames.forEach((game, index) => {
+        const prevGame = index > 0 ? allGames[index - 1] : null;
+        const normalizedGame = normalizeGameName(game.game);
+        
+        game.results.forEach(result => {
+            const player = result.player;
+            const currentScore = result.score;
+            
+            if (prevGame) {
+                const prevResult = prevGame.results.find(r => r.player === player);
+                const prevScore = prevResult ? prevResult.score : 0;
+                const change = currentScore - prevScore;
+                
+                playerGameData[player][normalizedGame] += change;
+            } else {
+                // First game - all Mahbles are from this game
+                playerGameData[player][normalizedGame] = currentScore;
             }
         });
-    }
+    });
+    
+    // Generate random colors for each game
+    const gameColors = {};
+    uniqueGames.forEach((game, index) => {
+        gameColors[game] = COLOR_POOL[index % COLOR_POOL.length];
+    });
+    
+    // Build datasets (one per game type)
+    const datasets = uniqueGames.map(game => ({
+        label: game.charAt(0).toUpperCase() + game.slice(1),
+        data: Array.from(allPlayers).map(player => playerGameData[player][game]),
+        backgroundColor: gameColors[game]
+    }));
+    
+    new Chart(stackedCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from(allPlayers),
+            datasets: datasets
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { display: false },
+                    ticks: {
+                        color: '#e0e0e0',
+                        font: { size: 14 }
+                    }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    ticks: {
+                        color: '#e0e0e0',
+                        precision: 0,
+                        font: { size: 14 }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#e0e0e0', font: { size: 12 } }
+                },
+                title: {
+                    display: true,
+                    text: 'Mahbles by Game Source',
+                    color: '#e0e0e0',
+                    font: { size: 18, weight: 'bold' }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed.y;
+                            return `${context.dataset.label}: ${value > 0 ? '+' : ''}${value}`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
 
-    marbleChart.update(); //redraws graph with new data
-    form.reset(); //clears form fields for next entry
-});
+// ============================================
+// GAME HISTORY TIMELINE
+// ============================================
+
+function renderGameHistory() {
+    const container = document.getElementById('game-history');
+    if (!container) return;
+    
+    // Show last 5 games by default
+    const recentGames = allGames.slice(-5).reverse();
+    
+    let html = '<div class="game-history-list">';
+    
+    recentGames.forEach((game, index) => {
+        const prevGame = allGames[allGames.length - 5 + (4 - index) - 1];
+        
+        html += `
+            <div class="game-history-item card">
+                <div class="game-history-header">
+                    <span class="game-date">📅 ${game.date}</span>
+                    <span class="game-name">${game.game}</span>
+                </div>
+                <div class="game-history-results">
+                    ${generateGameResults(game, prevGame)}
+                </div>
+                ${game.notes ? `<div class="game-notes">📝 ${game.notes}</div>` : ''}
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    // Add "Show All Games" button if there are more than 5
+    if (allGames.length > 5) {
+        html += `
+            <button id="show-all-games" class="btn-secondary" onclick="toggleAllGames()">
+                Show All ${allGames.length} Games
+            </button>
+            <div id="all-games-container" style="display: none;"></div>
+        `;
+    }
+    
+    container.innerHTML = html;
+}
+
+function generateGameResults(game, prevGame) {
+    let html = '';
+    
+    // Calculate changes
+    game.results.forEach(result => {
+        const player = result.player;
+        const currentScore = result.score;
+        
+        let change = 0;
+        let prevScore = 0;
+        
+        if (prevGame) {
+            const prevResult = prevGame.results.find(r => r.player === player);
+            prevScore = prevResult ? prevResult.score : 0;
+            change = currentScore - prevScore;
+        } else {
+            // First game
+            change = currentScore;
+        }
+        
+        let changeIcon = '➡️';
+        let changeClass = 'no-change';
+        
+        if (change > 0) {
+            changeIcon = '⬆️';
+            changeClass = 'positive-change';
+        } else if (change < 0) {
+            changeIcon = '⬇️';
+            changeClass = 'negative-change';
+        }
+        
+        html += `
+            <div class="game-result ${changeClass}">
+                <span class="player-name">${player}</span>
+                <span class="player-change">${change > 0 ? '+' : ''}${change} ${changeIcon}</span>
+            </div>
+        `;
+    });
+    
+    return html;
+}
+
+function toggleAllGames() {
+    const button = document.getElementById('show-all-games');
+    const container = document.getElementById('all-games-container');
+    
+    if (container.style.display === 'none') {
+        // Show all games
+        const allGamesReversed = [...allGames].reverse();
+        let html = '<div class="game-history-list">';
+        
+        allGamesReversed.forEach((game, index) => {
+            const prevGameIndex = allGames.length - 1 - index - 1;
+            const prevGame = prevGameIndex >= 0 ? allGames[prevGameIndex] : null;
+            
+            html += `
+                <div class="game-history-item card">
+                    <div class="game-history-header">
+                        <span class="game-date">📅 ${game.date}</span>
+                        <span class="game-name">${game.game}</span>
+                    </div>
+                    <div class="game-history-results">
+                        ${generateGameResults(game, prevGame)}
+                    </div>
+                    ${game.notes ? `<div class="game-notes">📝 ${game.notes}</div>` : ''}
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        container.innerHTML = html;
+        container.style.display = 'block';
+        button.textContent = 'Show Less';
+    } else {
+        // Hide all games
+        container.style.display = 'none';
+        button.textContent = `Show All ${allGames.length} Games`;
+    }
+}
+
+// ============================================
+// RENDER ALL CHARTS
+// ============================================
+
+function renderAllCharts() {
+    renderCurrentStandings();
+    renderLineChart();
+    renderStackedBarChart();
+}
+
+// ============================================
+// FALLBACK DATA
+// ============================================
+
+function useDefaultData() {
+    allGames = [
+        {
+            date: "2025-07-19",
+            game: "Mario Kart 8",
+            results: [
+                { player: "Syed", score: 4 },
+                { player: "George", score: 3 },
+                { player: "Jan", score: 2 },
+                { player: "Parker", score: 1 },
+                { player: "Jaz", score: 0 }
+            ]
+        },
+        {
+            date: "2025-07-22",
+            game: "Catan",
+            results: [
+                { player: "Syed", score: 4 },
+                { player: "George", score: 3 },
+                { player: "Jan", score: 4 },
+                { player: "Parker", score: -1 },
+                { player: "Jaz", score: 0 }
+            ]
+        },
+        {
+            date: "2025-07-26",
+            game: "Wingspan",
+            results: [
+                { player: "Syed", score: 4 },
+                { player: "George", score: 3 },
+                { player: "Jan", score: 5 },
+                { player: "Parker", score: 0 },
+                { player: "Jaz", score: 0 }
+            ]
+        },
+        {
+            date: "2025-08-25",
+            game: "Poker",
+            results: [
+                { player: "Syed", score: 4 },
+                { player: "George", score: 5.5 },
+                { player: "Jan", score: 0 },
+                { player: "Parker", score: 2.5 },
+                { player: "Jaz", score: 0 }
+            ]
+        }
+    ];
+    
+    discoverPlayers();
+    renderAllCharts();
+    renderGameHistory();
+}
+
+// ============================================
+// INITIALIZE ON PAGE LOAD
+// ============================================
+
+document.addEventListener('DOMContentLoaded', loadMahblesData);

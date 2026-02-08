@@ -1,0 +1,107 @@
+backend:
+  name: github
+  repo: georglynx.github.io
+  branch: main
+
+# Using GitHub OAuth (you'll set this up)
+# No base_url needed for GitHub OAuth App method
+
+media_folder: "images/reviews"
+public_folder: "/images/reviews"
+
+collections:
+  # Mahbles Games Collection
+  - name: "mahbles"
+    label: "Mahbles Games"
+    label_singular: "Mahbles Game"
+    folder: "mahbles-data"
+    create: true
+    slug: "{{year}}-{{month}}-{{day}}"
+    extension: json
+    format: json
+    identifier_field: date
+    summary: "{{date}} - {{game}}"
+    fields:
+      - label: "Date"
+        name: "date"
+        widget: "datetime"
+        format: "YYYY-MM-DD"
+        date_format: "YYYY-MM-DD"
+        time_format: false
+        
+      - label: "Game Played"
+        name: "game"
+        widget: "string"
+        hint: "Recent games: Mario Kart 8, Poker, Catan, Wingspan, Ultimate Chicken Horse"
+        
+      - label: "Game Results"
+        name: "results"
+        widget: "list"
+        summary: "{{fields.player}}: {{fields.score}}"
+        fields:
+          - label: "Player Name"
+            name: "player"
+            widget: "string"
+            hint: "Enter player name (e.g., Syed, George, Jan, Parker, Jaz)"
+            
+          - label: "Score"
+            name: "score"
+            widget: "number"
+            value_type: "float"
+            step: 0.5
+            hint: "Total Mahbles this player has after this game"
+            
+      - label: "Notes"
+        name: "notes"
+        widget: "text"
+        required: false
+        hint: "Optional notes about this game (corrections, special rules, etc.)"
+
+  # Reviews Collection
+  - name: "reviews"
+    label: "Reviews"
+    label_singular: "Review"
+    folder: "reviews-data"
+    create: true
+    slug: "{{slug}}"
+    extension: json
+    format: json
+    identifier_field: name
+    summary: "{{name}} - {{rating}}★"
+    fields:
+      - label: "Name"
+        name: "name"
+        widget: "string"
+        hint: "Title of the game, movie, or book"
+        
+      - label: "Type"
+        name: "type"
+        widget: "select"
+        options: ["games", "movies", "books"]
+        
+      - label: "Rating"
+        name: "rating"
+        widget: "number"
+        value_type: "float"
+        min: 0
+        max: 5
+        step: 0.5
+        hint: "Rating out of 5"
+        
+      - label: "Review"
+        name: "review"
+        widget: "text"
+        hint: "Your review text"
+        
+      - label: "Cover Image"
+        name: "image"
+        widget: "image"
+        required: false
+        hint: "Optional cover art or poster"
+        
+      - label: "Date"
+        name: "date"
+        widget: "datetime"
+        format: "YYYY-MM-DD"
+        date_format: "YYYY-MM-DD"
+        time_format: false
