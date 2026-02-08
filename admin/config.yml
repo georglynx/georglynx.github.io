@@ -1,10 +1,9 @@
 backend:
-  name: github
-  repo: georglynx.github.io
-  branch: main
+  name: git-gateway
+  branch: main  # Change to 'master' if your default branch is master
 
-# Using GitHub OAuth (you'll set this up)
-# No base_url needed for GitHub OAuth App method
+# This is important - no local_backend or other backend options
+# Git Gateway handles everything through Netlify Identity
 
 media_folder: "images/reviews"
 public_folder: "/images/reviews"

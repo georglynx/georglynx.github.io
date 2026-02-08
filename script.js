@@ -74,7 +74,7 @@ async function loadAllGames() {
 
 async function loadIndividualGames() {
     // Fetch list of files from GitHub API
-    const response = await fetch('https://api.github.com/repos/georglynx/georglynx.github.io/contents/mahbles-data');
+    const response = await fetch('https://api.github.com/repos/YOUR-USERNAME/YOUR-REPO-NAME/contents/mahbles-data');
     const files = await response.json();
     
     // Fetch each game file
@@ -519,13 +519,13 @@ function toggleAllGames() {
     const container = document.getElementById('all-games-container');
     
     if (container.style.display === 'none') {
-        // Show all games
-        const allGamesReversed = [...allGames].reverse();
+        // Show ONLY the older games (exclude the recent 5 already shown)
+        const olderGames = allGames.slice(0, -5).reverse();
         let html = '<div class="game-history-list">';
         
-        allGamesReversed.forEach((game, index) => {
-            const prevGameIndex = allGames.length - 1 - index - 1;
-            const prevGame = prevGameIndex >= 0 ? allGames[prevGameIndex] : null;
+        olderGames.forEach((game, index) => {
+            const actualIndex = allGames.length - 6 - index; // Start from 6th last game
+            const prevGame = actualIndex > 0 ? allGames[actualIndex - 1] : null;
             
             html += `
                 <div class="game-history-item card">
@@ -546,7 +546,7 @@ function toggleAllGames() {
         container.style.display = 'block';
         button.textContent = 'Show Less';
     } else {
-        // Hide all games
+        // Hide older games
         container.style.display = 'none';
         button.textContent = `Show All ${allGames.length} Games`;
     }
@@ -567,56 +567,20 @@ function renderAllCharts() {
 // ============================================
 
 function useDefaultData() {
-    allGames = [
-        {
-            date: "2025-07-19",
-            game: "Reset",
-            results: [
-                { player: "Syed", score: 4 },
-                { player: "George", score: 3 },
-                { player: "Jan", score: 2 },
-                { player: "Parker", score: 1 },
-                { player: "Jaz", score: 0 }
-            ]
-        },
-        {
-            date: "2025-07-22",
-            game: "Tetrio",
-            results: [
-                { player: "Syed", score: 4 },
-                { player: "George", score: 3 },
-                { player: "Jan", score: 4 },
-                { player: "Parker", score: -1 },
-                { player: "Jaz", score: 0 }
-            ]
-        },
-        {
-            date: "2025-07-26",
-            game: "Tetrio",
-            results: [
-                { player: "Syed", score: 4 },
-                { player: "George", score: 3 },
-                { player: "Jan", score: 5 },
-                { player: "Parker", score: 0 },
-                { player: "Jaz", score: 0 }
-            ]
-        },
-        {
-            date: "2025-08-25",
-            game: "Bobble League",
-            results: [
-                { player: "Syed", score: 4 },
-                { player: "George", score: 5.5 },
-                { player: "Jan", score: 0 },
-                { player: "Parker", score: 2.5 },
-                { player: "Jaz", score: 0 }
-            ]
-        }
-    ];
+    console.error('Failed to load game data. Please check that mahbles-data files exist.');
+    allGames = [];
+    allPlayers = new Set();
     
-    discoverPlayers();
-    renderAllCharts();
-    renderGameHistory();
+    // Show error message to user
+    const container = document.getElementById('game-history');
+    if (container) {
+        container.innerHTML = `
+            <div class="card" style="text-align: center; color: #ff6b6b;">
+                <h3>⚠️ Unable to Load Game Data</h3>
+                <p>Could not find any game files. Please make sure mahbles-data folder exists.</p>
+            </div>
+        `;
+    }
 }
 
 // ============================================
