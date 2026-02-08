@@ -570,7 +570,7 @@ function useDefaultData() {
     allGames = [
         {
             date: "2025-07-19",
-            game: "Mario Kart 8",
+            game: "Tetrio",
             results: [
                 { player: "Syed", score: 4 },
                 { player: "George", score: 3 },
@@ -581,7 +581,7 @@ function useDefaultData() {
         },
         {
             date: "2025-07-22",
-            game: "Catan",
+            game: "Tetrio",
             results: [
                 { player: "Syed", score: 4 },
                 { player: "George", score: 3 },
@@ -592,7 +592,7 @@ function useDefaultData() {
         },
         {
             date: "2025-07-26",
-            game: "Wingspan",
+            game: "Tetrio",
             results: [
                 { player: "Syed", score: 4 },
                 { player: "George", score: 3 },
@@ -603,7 +603,7 @@ function useDefaultData() {
         },
         {
             date: "2025-08-25",
-            game: "Poker",
+            game: "Tetrio",
             results: [
                 { player: "Syed", score: 4 },
                 { player: "George", score: 5.5 },
