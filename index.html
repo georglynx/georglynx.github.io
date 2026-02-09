@@ -1,34 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>georglynx</title>
-  <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>georglynx</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
+    <!-- Netlify Identity Widget (needed for invite/recovery links) -->
+    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
-
 <body>
-  
-  <main>
-    <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-content">
-        <h1 class="hero-title">georglynx</h1>
-        <p class="hero-subtitle">Work in Progress</p>
-        <p class="hero-description">
-          Building a space for projects and experiments. Check back soon.
-        </p>
-      </div>
-    </section>
-  </main>
+    <main>
+        <section class="hero">
+            <h1 class="gradient-text">georglynx</h1>
+            <p class="subtitle">work in progress</p>
+            <p class="description">personal site for game dev projects and reviews</p>
+        </section>
+    </main>
 
-  <footer>
-    <p class="version">v2.0.0</p>
-  </footer>
+    <footer>
+        <p class="version">v2.0.0</p>
+    </footer>
 
-  <script src="navigation.js"></script>
+    <!-- Netlify Identity redirect handler -->
+    <script>
+      if (window.netlifyIdentity) {
+        window.netlifyIdentity.on("init", user => {
+          if (!user) {
+            window.netlifyIdentity.on("login", () => {
+              document.location.href = "/admin/";
+            });
+          }
+        });
+      }
+    </script>
 </body>
-
 </html>
