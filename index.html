@@ -34,6 +34,11 @@
   <!-- Netlify Identity redirect handler -->
   <script>
     if (window.netlifyIdentity) {
+      // Tell Identity widget which Netlify site to use
+      window.netlifyIdentity.init({
+        APIUrl: "https://georglynx.netlify.app/.netlify/identity"
+      });
+      
       window.netlifyIdentity.on("init", user => {
         if (!user) {
           window.netlifyIdentity.on("login", () => {
