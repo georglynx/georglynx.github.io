@@ -1,3 +1,10 @@
+# Keep Identity endpoints working on Netlify
+[[redirects]]
+  from = "/.netlify/*"
+  to = "/.netlify/:splat"
+  status = 200
+
+# Redirect everything else to GitHub Pages
 [[redirects]]
   from = "/*"
   to = "https://www.georglynx.com/:splat"
