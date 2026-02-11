@@ -1,0 +1,15 @@
+{
+  "date": "2026-02-08",
+  "game": "Split Fiction",
+  "changes": [
+    {
+      "player": "George",
+      "change": 2
+    },
+    {
+      "player": "Jan",
+      "change": -2
+    }
+  ],
+  "notes": "Whoever got to 100 deaths first doing the secret level loses\n(In reality, we did double or nothing, so it should be 4 mahbles, but I let him off)"
+}
