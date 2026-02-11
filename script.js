@@ -329,17 +329,28 @@ function renderStackedBarChart() {
 
     const uniqueGames = [...new Set(allGames.map(g => g.game))];
     const playerGameData = {};
-    
+    const playerGameGains = {};
+    const playerGameLosses = {};
+
     allPlayers.forEach(player => {
         playerGameData[player] = {};
+        playerGameGains[player] = {};
+        playerGameLosses[player] = {};
         uniqueGames.forEach(game => {
             playerGameData[player][game] = 0;
+            playerGameGains[player][game] = 0;
+            playerGameLosses[player][game] = 0;
         });
     });
-    
+
     allGames.forEach(game => {
         game.changes.forEach(change => {
             playerGameData[change.player][game.game] += change.change;
+            if (change.change > 0) {
+                playerGameGains[change.player][game.game] += change.change;
+            } else if (change.change < 0) {
+                playerGameLosses[change.player][game.game] += change.change;
+            }
         });
     });
 
@@ -347,7 +358,10 @@ function renderStackedBarChart() {
         label: game.charAt(0).toUpperCase() + game.slice(1),
         data: Array.from(allPlayers).map(player => playerGameData[player][game]),
         backgroundColor: getGameColor(game),
-        hidden: game === 'reset' // Automatically hide Reset by default
+        hidden: game === 'reset',
+        // Store gains/losses for tooltip
+        gains: Array.from(allPlayers).map(player => playerGameGains[player][game]),
+        losses: Array.from(allPlayers).map(player => playerGameLosses[player][game])
     }));
     
     new Chart(ctx, {
@@ -394,7 +408,15 @@ function renderStackedBarChart() {
                         label: function(context) {
                             const value = context.parsed.y;
                             const sign = value >= 0 ? '+' : '';
-                            return `${context.dataset.label}: ${sign}${value}`;
+                            const gains = context.dataset.gains[context.dataIndex];
+                            const losses = context.dataset.losses[context.dataIndex];
+
+                            // Build tooltip with breakdown
+                            let label = `${context.dataset.label}: ${sign}${value}`;
+                            if (gains > 0 || losses < 0) {
+                                label += ` (Gains: +${gains}, Losses: ${losses})`;
+                            }
+                            return label;
                         }
                     }
                 }
