@@ -210,7 +210,8 @@ function renderCurrentStandings() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
+            aspectRatio: window.innerWidth < 768 ? 1 : 2,
             scales: {
                 y: {
                     beginAtZero: true,
@@ -273,7 +274,8 @@ function renderLineChart() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
+            aspectRatio: window.innerWidth < 768 ? 1 : 2,
             scales: {
                 y: {
                     beginAtZero: true,
@@ -372,7 +374,8 @@ function renderStackedBarChart() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
+            maintainAspectRatio: false,
+            aspectRatio: window.innerWidth < 768 ? 1 : 2,
             scales: {
                 x: {
                     stacked: true,

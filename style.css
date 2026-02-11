@@ -822,3 +822,28 @@ footer {
 #all-games-container {
     margin-top: var(--spacing-sm);
 }
+
+/* ========================================
+   CHART CONTAINERS
+   ======================================== */
+
+/* Only apply height to sections with charts */
+section.card:has(canvas) {
+    min-height: 450px;
+}
+
+/* Line chart gets taller */
+section.card:has(#marbleChart) {
+    min-height: 600px;
+}
+
+@media (max-width: 768px) {
+    section.card:has(canvas) {
+        min-height: 400px;
+    }
+
+    section.card:has(#marbleChart) {
+        min-height: 450px;
+    }
+}
+
