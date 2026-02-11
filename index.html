@@ -7,7 +7,7 @@
   <title>georglynx</title>
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico"/>
   <link rel="stylesheet" href="style.css">
-  <!-- Netlify Identity Widget (needed for invite/recovery links) -->
+  <!-- Netlify Identity Widget -->
   <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 
@@ -31,14 +31,9 @@
 
   <script src="navigation.js"></script>
   
-  <!-- Netlify Identity redirect handler -->
+  <!-- Netlify Identity will auto-detect configuration now -->
   <script>
     if (window.netlifyIdentity) {
-      // Tell Identity widget which Netlify site to use
-      window.netlifyIdentity.init({
-        APIUrl: "https://georglynx.netlify.app/.netlify/identity"
-      });
-      
       window.netlifyIdentity.on("init", user => {
         if (!user) {
           window.netlifyIdentity.on("login", () => {

@@ -12,14 +12,9 @@
   <!-- Include the script that builds the page and powers Decap CMS -->
   <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
   
-  <!-- Netlify Identity Redirect Script -->
+  <!-- Netlify Identity will auto-detect configuration now -->
   <script>
     if (window.netlifyIdentity) {
-      // Tell Identity widget which Netlify site to use
-      window.netlifyIdentity.init({
-        APIUrl: "https://georglynx.netlify.app/.netlify/identity"
-      });
-      
       window.netlifyIdentity.on("init", user => {
         if (!user) {
           window.netlifyIdentity.on("login", () => {
