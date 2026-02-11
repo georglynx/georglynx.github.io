@@ -19,8 +19,8 @@
     --text-primary: #e0e0e0;
     --text-secondary: #c0c0c0;
     --text-muted: #6c757d;
-    --accent-primary: #bb86fc;
-    --accent-hover: #a362f7;
+    --accent-primary: #ffa500;
+    --accent-hover: #ff8c00;
     --border-subtle: rgba(255, 255, 255, 0.1);
     --border-hover: rgba(255, 255, 255, 0.2);
     
@@ -119,7 +119,7 @@ a {
 
 .nav-link.active {
     background: linear-gradient(135deg, #ff6b6b, #ffa500);
-    color: var(--bg-primary);
+    color: #ffffff;
     font-weight: 600;
 }
 
@@ -199,6 +199,10 @@ a {
     margin: var(--spacing-lg) 0 var(--spacing-md) 0;
 }
 
+.page-header h1 {
+    margin: 0;
+}
+
 .title-icon {
     width: 36px;
     height: 36px;
@@ -262,13 +266,14 @@ a {
 
 .btn-primary {
     background-color: var(--accent-primary);
-    color: var(--bg-primary);
+    color: #ffffff;
 }
 
 .btn-primary:hover {
     background-color: var(--accent-hover);
+    color: #ffffff;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.3);
+    box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
 }
 
 .btn-secondary {
@@ -279,12 +284,12 @@ a {
 
 .btn-secondary:hover {
     background-color: var(--accent-primary);
-    color: var(--bg-primary);
+    color: #ffffff;
 }
 
 button[type="submit"] {
     background-color: var(--accent-primary);
-    color: var(--bg-primary);
+    color: #ffffff;
     border: none;
     border-radius: 6px;
     padding: 12px var(--spacing-sm);
@@ -297,6 +302,7 @@ button[type="submit"] {
 
 button[type="submit"]:hover {
     background-color: var(--accent-hover);
+    color: #ffffff;
 }
 
 /* ========================================
@@ -520,7 +526,7 @@ footer {
 
 .filter-btn.active {
     background-color: var(--accent-primary);
-    color: var(--bg-primary);
+    color: #ffffff;
     border-color: var(--accent-primary);
 }
 
@@ -714,11 +720,12 @@ footer {
 .game-history-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-sm);
+    gap: 10px;
 }
 
 .game-history-item {
     padding: var(--spacing-sm);
+    margin-bottom: 0 !important;
 }
 
 .game-history-header {
