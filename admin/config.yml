@@ -31,24 +31,23 @@ collections:
       - label: "Game Played"
         name: "game"
         widget: "string"
-        hint: "Recent games: Mario Kart 8, Poker, Catan, Wingspan, Ultimate Chicken Horse"
         
-      - label: "Game Results"
-        name: "results"
+      - label: "Game Changes"
+        name: "changes"
         widget: "list"
-        summary: "{{fields.player}}: {{fields.score}}"
+        summary: "{{fields.player}}: {{fields.change}}"
         fields:
           - label: "Player Name"
             name: "player"
             widget: "string"
-            hint: "Enter player name (e.g., Syed, George, Jan, Parker, Jaz)"
+            hint: "Enter player name (e.g., Syed, George, Jan, Parker, Jaz, Dyl)"
             
-          - label: "Score"
-            name: "score"
+          - label: "Change"
+            name: "change"
             widget: "number"
             value_type: "float"
             step: 0.5
-            hint: "Total Mahbles this player has after this game"
+            hint: "Mahbles gained (+2) or lost (-1) in this game"
             
       - label: "Notes"
         name: "notes"

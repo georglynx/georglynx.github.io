@@ -1,12 +1,12 @@
 {
   "date": "2025-10-18",
   "game": "Minigolf",
-  "results": [
-    { "player": "Syed", "score": 8 },
-    { "player": "George", "score": 7.5 },
-    { "player": "Jan", "score": 4 },
-    { "player": "Parker", "score": 6.5 },
-    { "player": "Jaz", "score": 1 },
-    { "player": "Dyl", "score": 3 }
+  "changes": [
+    { "player": "Syed", "change": 2 },
+    { "player": "George", "change": 2 },
+    { "player": "Jan", "change": 2 },
+    { "player": "Parker", "change": 4 },
+    { "player": "Jaz", "change": 1 },
+    { "player": "Dyl", "change": 1 }
   ]
 }

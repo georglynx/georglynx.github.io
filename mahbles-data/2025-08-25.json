@@ -1,11 +1,9 @@
 {
   "date": "2025-08-25",
   "game": "Bobble League",
-  "results": [
-    { "player": "Syed", "score": 4 },
-    { "player": "George", "score": 5.5 },
-    { "player": "Jan", "score": 0 },
-    { "player": "Parker", "score": 2.5 },
-    { "player": "Jaz", "score": 0 }
+  "changes": [
+    { "player": "George", "change": 2.5 },
+    { "player": "Jan", "change": -5 },
+    { "player": "Parker", "change": 2.5 }
   ]
 }
