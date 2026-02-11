@@ -10,6 +10,7 @@ const COLOR_POOL = [
     '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C06C84'
 ];
 let playerColors = {};
+let gameColors = {};
 
 // ============================================
 // DATA LOADING
@@ -26,6 +27,7 @@ async function loadGames() {
         }
         
         await loadPlayerColors();
+        await loadGameColors();
         normalizeData();
         validateData();
         discoverPlayers();
@@ -56,6 +58,17 @@ async function loadPlayerColors() {
         }
     } catch (error) {
         console.log('No player-colors.json found, will use defaults');
+    }
+}
+
+async function loadGameColors() {
+    try {
+        const response = await fetch('game-colors.json');
+        if (response.ok) {
+            gameColors = await response.json();
+        }
+    } catch (error) {
+        console.log('No game-colors.json found, will use defaults');
     }
 }
 
@@ -105,17 +118,31 @@ function getPlayerColor(player) {
     if (playerColors[player]) {
         return playerColors[player];
     }
-    
+
     const usedColors = Object.values(playerColors);
     const availableColors = COLOR_POOL.filter(c => !usedColors.includes(c));
-    
+
     if (availableColors.length > 0) {
         playerColors[player] = availableColors[0];
     } else {
         playerColors[player] = '#' + Math.floor(Math.random()*16777215).toString(16);
     }
-    
+
     return playerColors[player];
+}
+
+function getGameColor(game) {
+    const normalizedGame = game.toLowerCase();
+
+    if (gameColors[normalizedGame]) {
+        return gameColors[normalizedGame];
+    }
+
+    // Fallback to HSL color generation if no color is defined
+    const uniqueGames = [...new Set(allGames.map(g => g.game))];
+    const index = uniqueGames.indexOf(game);
+    const hue = (index * 360 / uniqueGames.length);
+    return `hsl(${hue}, 70%, 60%)`;
 }
 
 // ============================================
@@ -312,20 +339,14 @@ function renderStackedBarChart() {
     
     allGames.forEach(game => {
         game.changes.forEach(change => {
-            playerGameData[change.player][game] += change.change;
+            playerGameData[change.player][game.game] += change.change;
         });
     });
-    
-    const gameColors = {};
-    uniqueGames.forEach((game, index) => {
-        const hue = (index * 360 / uniqueGames.length);
-        gameColors[game] = `hsl(${hue}, 70%, 60%)`;
-    });
-    
+
     const datasets = uniqueGames.map(game => ({
         label: game.charAt(0).toUpperCase() + game.slice(1),
         data: Array.from(allPlayers).map(player => playerGameData[player][game]),
-        backgroundColor: gameColors[game]
+        backgroundColor: getGameColor(game)
     }));
     
     new Chart(ctx, {

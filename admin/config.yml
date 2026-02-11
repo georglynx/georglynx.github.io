@@ -1,6 +1,6 @@
 backend:
   name: git-gateway
-  branch: main  # Change to 'master' if your default branch is master
+  branch: main
 
 # This is important - no local_backend or other backend options
 # Git Gateway handles everything through Netlify Identity
