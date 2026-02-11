@@ -326,7 +326,7 @@ function renderLineChart() {
 function renderStackedBarChart() {
     const ctx = document.getElementById('marbleStackedChart');
     if (!ctx) return;
-    
+
     const uniqueGames = [...new Set(allGames.map(g => g.game))];
     const playerGameData = {};
     
@@ -346,7 +346,8 @@ function renderStackedBarChart() {
     const datasets = uniqueGames.map(game => ({
         label: game.charAt(0).toUpperCase() + game.slice(1),
         data: Array.from(allPlayers).map(player => playerGameData[player][game]),
-        backgroundColor: getGameColor(game)
+        backgroundColor: getGameColor(game),
+        hidden: game === 'reset' // Automatically hide Reset by default
     }));
     
     new Chart(ctx, {
