@@ -1,0 +1,24 @@
+# Netlify configuration for Cozzie Livs Calc
+
+[build]
+  # No build command needed — static HTML + serverless functions
+  publish = "/"
+
+[functions]
+  # Where Netlify looks for serverless functions
+  directory = "netlify/functions"
+  # Use Node.js 18
+  node_bundler = "esbuild"
+
+# Redirect /api/search to the Netlify function (cleaner URLs)
+[[redirects]]
+  from = "/api/search"
+  to = "/.netlify/functions/search"
+  status = 200
+
+# SPA-style fallback for the calc page
+# (only if you want /calc/* to always load the page)
+# [[redirects]]
+#   from = "/calc/*"
+#   to = "/calc/index.html"
+#   status = 200

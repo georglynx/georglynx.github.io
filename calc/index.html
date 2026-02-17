@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cozzie Livs Calc</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./static/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header__inner">
+                <a href="/" class="header__back">← georglynx.com</a>
+                <div class="logo">
+                    <span class="logo__icon">🛒</span>
+                    <h1 class="logo__text">cozzie livs <span class="logo__accent">calc</span></h1>
+                </div>
+                <p class="header__tagline">Tesco · Sainsbury's · Aldi — find the cheapest prices, including Clubcard &amp; Nectar</p>
+            </div>
+        </header>
+
+        <!-- Search -->
+        <section class="search-section">
+            <div class="search-box">
+                <div class="search-box__input-wrap">
+                    <svg class="search-box__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input
+                        type="text"
+                        id="searchInput"
+                        class="search-box__input"
+                        placeholder="Search for a product... e.g. mozzarella, chicken breast, olive oil"
+                        autocomplete="off"
+                        autofocus
+                    >
+                    <button id="searchBtn" class="search-box__btn">Search</button>
+                </div>
+                <div class="search-box__hints">
+                    <span class="hint-label">Try:</span>
+                    <button class="hint-chip" data-query="salami">salami</button>
+                    <button class="hint-chip" data-query="sourdough bread">sourdough bread</button>
+                    <button class="hint-chip" data-query="free range eggs">free range eggs</button>
+                    <button class="hint-chip" data-query="olive oil">olive oil</button>
+                    <button class="hint-chip" data-query="cheddar cheese">cheddar cheese</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Loading state -->
+        <div id="loading" class="loading" hidden>
+            <div class="loading__spinner"></div>
+            <p class="loading__text">Searching across supermarkets...</p>
+            <div class="loading__stores">
+                <span class="store-dot store-dot--tesco">Tesco</span>
+                <span class="store-dot store-dot--sainsburys">Sainsbury's</span>
+                <span class="store-dot store-dot--aldi">Aldi</span>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <section id="results" class="results" hidden>
+            <div class="results__summary" id="resultsSummary"></div>
+
+            <!-- Cheapest picks -->
+            <div class="cheapest-section" id="cheapestSection" hidden>
+                <h2 class="section-title">
+                    <span class="section-title__icon">⭐</span>
+                    Cheapest finds
+                </h2>
+                <div class="cheapest-grid" id="cheapestGrid"></div>
+            </div>
+
+            <!-- Per-store results -->
+            <div class="store-results">
+                <h2 class="section-title">
+                    <span class="section-title__icon">🏪</span>
+                    Results by store
+                </h2>
+                <div class="store-tabs" id="storeTabs">
+                    <button class="store-tab store-tab--tesco active" data-store="tesco">
+                        <span class="store-tab__dot"></span>Tesco
+                        <span class="store-tab__count" id="countTesco">0</span>
+                    </button>
+                    <button class="store-tab store-tab--sainsburys" data-store="sainsburys">
+                        <span class="store-tab__dot"></span>Sainsbury's
+                        <span class="store-tab__count" id="countSainsburys">0</span>
+                    </button>
+                    <button class="store-tab store-tab--aldi" data-store="aldi">
+                        <span class="store-tab__dot"></span>Aldi
+                        <span class="store-tab__count" id="countAldi">0</span>
+                    </button>
+                </div>
+
+                <div class="product-grid" id="productGrid"></div>
+            </div>
+        </section>
+
+        <!-- Empty state -->
+        <div id="emptyState" class="empty-state" hidden>
+            <div class="empty-state__icon">🔍</div>
+            <p class="empty-state__text">No products found. Try a different search term.</p>
+        </div>
+
+        <!-- Error state -->
+        <div id="errorState" class="error-state" hidden>
+            <div class="error-state__icon">⚠️</div>
+            <p class="error-state__text" id="errorText">Something went wrong. Please try again.</p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Prices scraped from public supermarket websites — may not reflect exact in-store prices.</p>
+            <p>Built by <a href="/">georglynx.com</a> · Not affiliated with any supermarket.</p>
+        </footer>
+    </div>
+
+    <script src="./static/app.js"></script>
+</body>
+</html>

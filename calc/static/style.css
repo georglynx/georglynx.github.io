@@ -1,0 +1,442 @@
+/* ─── Variables ──────────────────────────────────────────────── */
+:root {
+    --font-body: 'Public Sans', system-ui, sans-serif;
+
+    --bg: #121212;
+    --bg-card: #1e1e1e;
+    --bg-subtle: #2c2c2c;
+
+    --text: #e0e0e0;
+    --text-muted: #c0c0c0;
+    --text-light: #6c757d;
+
+    --border: rgba(255, 255, 255, 0.1);
+    --border-light: rgba(255, 255, 255, 0.07);
+    --border-hover: rgba(255, 255, 255, 0.2);
+
+    --tesco: #00539f;
+    --tesco-light: rgba(0, 83, 159, 0.2);
+    --sainsburys: #f06c00;
+    --sainsburys-light: rgba(240, 108, 0, 0.2);
+    --aldi: #00205b;
+    --aldi-light: rgba(0, 32, 91, 0.2);
+
+    --accent: #ff7e47;
+    --accent-hover: #e56830;
+    --accent-light: rgba(255, 126, 71, 0.15);
+
+    --badge-best: #d4a017;
+    --badge-best-bg: rgba(212, 160, 23, 0.12);
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.5);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+}
+
+/* ─── Reset & Base ───────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* ─── Header ─────────────────────────────────────────────────── */
+.header {
+    padding: 32px 0 24px;
+    text-align: center;
+}
+
+.header__back {
+    display: inline-block;
+    font-size: 13px;
+    color: var(--text-light);
+    text-decoration: none;
+    margin-bottom: 12px;
+    transition: color 0.2s;
+}
+.header__back:hover { color: var(--accent); }
+
+.logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+.logo__icon { font-size: 28px; }
+.logo__text {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+}
+.logo__accent { color: var(--accent); }
+
+.header__tagline {
+    margin-top: 6px;
+    font-size: 14px;
+    color: var(--text-muted);
+    letter-spacing: 0.01em;
+}
+
+/* ─── Search ─────────────────────────────────────────────────── */
+.search-section { padding: 8px 0 32px; }
+
+.search-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    padding: 6px;
+    box-shadow: var(--shadow-md);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.search-box:focus-within {
+    box-shadow: var(--shadow-lg);
+    border-color: var(--accent);
+}
+
+.search-box__input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.search-box__icon {
+    width: 22px;
+    height: 22px;
+    margin-left: 16px;
+    color: var(--text-light);
+    flex-shrink: 0;
+}
+.search-box__input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: var(--font-body);
+    font-size: 16px;
+    color: var(--text);
+    padding: 14px 4px;
+}
+.search-box__input::placeholder { color: var(--text-light); }
+
+.search-box__btn {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    border-radius: calc(var(--radius-xl) - 4px);
+    padding: 12px 28px;
+    font-family: var(--font-body);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+    flex-shrink: 0;
+}
+.search-box__btn:hover { background: var(--accent-hover); }
+.search-box__btn:active { transform: scale(0.97); }
+
+.search-box__hints {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px 10px;
+    flex-wrap: wrap;
+}
+.hint-label {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.hint-chip {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.hint-chip:hover {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* ─── Loading ────────────────────────────────────────────────── */
+.loading { text-align: center; padding: 48px 0; }
+
+.loading__spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading__text { font-size: 15px; color: var(--text-muted); margin-bottom: 12px; }
+
+.loading__stores { display: flex; justify-content: center; gap: 16px; }
+
+.store-dot {
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 12px;
+    border-radius: 100px;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+.store-dot--tesco { background: var(--tesco-light); color: #4d9fdf; animation-delay: 0s; }
+.store-dot--sainsburys { background: var(--sainsburys-light); color: var(--sainsburys); animation-delay: 0.3s; }
+.store-dot--aldi { background: var(--aldi-light); color: #6680b3; animation-delay: 0.6s; }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.95); }
+}
+
+/* ─── Results ────────────────────────────────────────────────── */
+.results__summary {
+    text-align: center;
+    padding: 0 0 24px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+.results__summary strong { color: var(--text); }
+
+/* ─── Cheapest ───────────────────────────────────────────────── */
+.section-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+.section-title__icon { font-size: 18px; }
+.cheapest-section { margin-bottom: 32px; }
+.cheapest-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+/* ─── Product Card ───────────────────────────────────────────── */
+.product-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    gap: 14px;
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+.product-card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    border-color: var(--border-hover);
+}
+.product-card--cheapest {
+    border-color: var(--badge-best);
+    background: var(--badge-best-bg);
+}
+.product-card--cheapest::before {
+    content: 'CHEAPEST';
+    position: absolute;
+    top: 8px;
+    right: -24px;
+    background: var(--badge-best);
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 3px 32px;
+    transform: rotate(45deg);
+}
+
+.product-card__img {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    object-fit: contain;
+    background: var(--bg-subtle);
+    flex-shrink: 0;
+}
+.product-card__img--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-subtle);
+    font-size: 28px;
+    flex-shrink: 0;
+}
+
+.product-card__info { flex: 1; min-width: 0; }
+
+.product-card__store {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border-radius: 100px;
+    margin-bottom: 4px;
+}
+.product-card__store--tesco { background: var(--tesco-light); color: #4d9fdf; }
+.product-card__store--sainsburys { background: var(--sainsburys-light); color: var(--sainsburys); }
+.product-card__store--aldi { background: var(--aldi-light); color: #6680b3; }
+
+.product-card__name {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    color: var(--text);
+}
+.product-card__name a { color: inherit; text-decoration: none; }
+.product-card__name a:hover { color: var(--accent); }
+
+.product-card__prices {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.product-card__price {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+}
+.product-card__price--loyalty { color: var(--accent); }
+.product-card__price--regular-struck {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-light);
+    text-decoration: line-through;
+}
+
+.product-card__loyalty-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+.product-card__loyalty-badge--clubcard { background: var(--tesco); color: white; }
+.product-card__loyalty-badge--nectar { background: var(--sainsburys); color: white; }
+
+.product-card__unit { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+.product-card__promo { font-size: 12px; color: var(--accent); font-weight: 500; margin-top: 4px; }
+
+/* ─── Store Tabs ─────────────────────────────────────────────── */
+.store-results { margin-bottom: 48px; }
+.store-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+
+.store-tab {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: var(--bg-card);
+    font-family: var(--font-body);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.store-tab:hover { border-color: var(--border-hover); color: var(--text); }
+.store-tab.active { color: white; border-color: transparent; }
+.store-tab--tesco.active { background: var(--tesco); }
+.store-tab--sainsburys.active { background: var(--sainsburys); }
+.store-tab--aldi.active { background: var(--aldi); }
+
+.store-tab__dot { width: 8px; height: 8px; border-radius: 50%; }
+.store-tab--tesco .store-tab__dot { background: #4d9fdf; }
+.store-tab--sainsburys .store-tab__dot { background: var(--sainsburys); }
+.store-tab--aldi .store-tab__dot { background: #6680b3; }
+.store-tab.active .store-tab__dot { background: rgba(255,255,255,0.5); }
+
+.store-tab__count {
+    background: rgba(255,255,255,0.1);
+    padding: 1px 7px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.store-tab.active .store-tab__count { background: rgba(255,255,255,0.25); }
+
+/* ─── Product Grid ───────────────────────────────────────────── */
+.product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
+/* ─── States ─────────────────────────────────────────────────── */
+.store-error { text-align: center; padding: 32px; color: var(--text-light); font-size: 14px; }
+.empty-state, .error-state { text-align: center; padding: 64px 20px; }
+.empty-state__icon, .error-state__icon { font-size: 48px; margin-bottom: 16px; }
+.empty-state__text, .error-state__text { font-size: 16px; color: var(--text-muted); }
+
+/* ─── Footer ─────────────────────────────────────────────────── */
+.footer {
+    text-align: center;
+    padding: 32px 0;
+    border-top: 1px solid var(--border);
+    margin-top: 32px;
+}
+.footer p { font-size: 12px; color: var(--text-light); margin-bottom: 4px; }
+.footer a { color: var(--accent); text-decoration: none; }
+.footer a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* ─── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .app { padding: 0 12px; }
+    .logo__text { font-size: 22px; }
+    .search-box__btn { padding: 12px 18px; font-size: 14px; }
+    .product-grid, .cheapest-grid { grid-template-columns: 1fr; }
+    .store-tabs { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .search-box__hints { display: none; }
+}

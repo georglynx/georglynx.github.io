@@ -1,0 +1,9 @@
+{
+  "name": "cozzie-livs-calc",
+  "version": "0.1.0",
+  "description": "Compare grocery prices across UK supermarkets",
+  "private": true,
+  "dependencies": {
+    "cheerio": "^1.0.0"
+  }
+}
