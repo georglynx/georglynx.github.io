@@ -127,6 +127,7 @@ body {
 .store-dot--tesco { background: var(--tesco-light); color: #4d9fdf; animation-delay: 0s; }
 .store-dot--sainsburys { background: var(--sainsburys-light); color: var(--sainsburys); animation-delay: 0.3s; }
 .store-dot--aldi { background: var(--aldi-light); color: #6680b3; animation-delay: 0.6s; }
+.store-dot--more { background: rgba(255,255,255,0.08); color: var(--text-muted); animation-delay: 0.9s; }
 @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.5; transform: scale(0.95); }

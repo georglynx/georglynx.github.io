@@ -238,8 +238,22 @@ a {
     font-size: 1rem;
     color: var(--text-secondary);
     max-width: 600px;
-    margin: 0 auto var(--spacing-lg) auto;
+    margin: 0 auto var(--spacing-sm) auto;
     line-height: 1.8;
+}
+
+.hero-contact {
+    font-size: 0.95rem;
+    margin: 0 auto var(--spacing-lg) auto;
+}
+
+.hero-contact a {
+    color: var(--accent-primary);
+}
+
+.hero-contact a:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
 }
 
 .hero-buttons {

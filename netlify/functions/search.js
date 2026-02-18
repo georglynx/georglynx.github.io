@@ -219,45 +219,98 @@ function parseProductPage(html, code) {
   // ── "Where To Buy" — main store pricing ──
   const storePrices = [];
 
+  // Strategy 1: Parse the HTML structure directly — find redirect links per store
+  const storeEntries = [];
+  $('a[href*="redirect.trolley.co.uk"], a[href*="open_store"]').each((_, el) => {
+    const $link = $(el);
+    // Walk up to find the containing block for this store entry
+    const $container = $link.closest("div, li, section, article") || $link.parent();
+    const blockText = $container.text().replace(/\s+/g, " ").trim();
+    if (blockText) storeEntries.push(blockText);
+  });
+
+  // Strategy 2: Fall back to text-based splitting if no redirect links found
   const wtbIdx = fullText.indexOf("Where To Buy");
   const altIdx = fullText.indexOf("Supermarket Alternatives");
   const revIdx = fullText.indexOf("Reviews");
-  const sectionEnd = altIdx >= 0 ? altIdx : (revIdx >= 0 ? revIdx : wtbIdx + 1000);
+  const sectionEnd = altIdx >= 0 ? altIdx : (revIdx >= 0 ? revIdx : wtbIdx + 2000);
   const wtbText = wtbIdx >= 0 ? fullText.slice(wtbIdx, sectionEnd) : "";
 
+  const knownStores = [
+    { name: "Tesco", loyalty: "Clubcard", loyaltyRx: /CLUBCARD\s*(?:PRICE)?\s*£?([\d.]+)/i },
+    { name: "Sainsbury's", loyalty: "Nectar", loyaltyRx: /NECTAR\s*(?:PRICE)?\s*£?([\d.]+)/i },
+    { name: "Aldi" },
+    { name: "Asda" },
+    { name: "Morrisons" },
+    { name: "Waitrose" },
+    { name: "Ocado" },
+    { name: "Co-op" },
+    { name: "Iceland" },
+    { name: "Amazon" },
+  ];
+
+  // Split wtbText into per-store segments
   if (wtbText) {
-    const patterns = [
-      { name: "Tesco",       rx: /Tesco\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?\s*(?:£([\d.]+)\s*CLUBCARD)?/i, loyalty: "Clubcard" },
-      { name: "Sainsbury's", rx: /Sainsbury'?s?\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?\s*(?:£([\d.]+)\s*NECTAR)?/i, loyalty: "Nectar" },
-      { name: "Aldi",        rx: /Aldi\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
-      { name: "Asda",        rx: /Asda\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
-      { name: "Morrisons",   rx: /Morrisons\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
-      { name: "Waitrose",    rx: /Waitrose\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
-      { name: "Ocado",       rx: /Ocado\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
-      { name: "Co-op",       rx: /Co-op\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
-    ];
+    const storePattern = new RegExp(`(${knownStores.map(s => s.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|")})`, "gi");
+    const parts = wtbText.split(storePattern);
 
-    for (const p of patterns) {
-      const m = wtbText.match(p.rx);
-      if (m) {
-        const entry = {
-          store: p.name,
-          price: parseFloat(m[1]),
-          pricePerUnit: m[2] ? parseFloat(m[2]) : null,
-          unit: m[3] ? `per ${m[3]}` : null,
-          loyaltyPrice: m[4] ? parseFloat(m[4]) : null,
-          loyaltyScheme: m[4] ? p.loyalty : null,
-        };
-        entry.bestPrice = entry.loyaltyPrice && entry.loyaltyPrice < entry.price
-          ? entry.loyaltyPrice : entry.price;
+    // parts alternates: [before, storeName, segment, storeName, segment, ...]
+    for (let i = 1; i < parts.length - 1; i += 2) {
+      const storeName = parts[i];
+      const segment = parts[i + 1] || "";
 
-        // Check for promo text
-        const promoRx = new RegExp(p.name + "[^£]*?(\\d+\\s+FOR\\s+£[\\d.]+|BUY\\s+\\d+.+?SAVE|ANY\\s+\\d+\\s+FOR\\s+£[\\d.]+)", "i");
-        const promoM = wtbText.match(promoRx);
-        entry.promotion = promoM ? promoM[1] : null;
+      // Skip "Unavailable" stores
+      if (/unavailable/i.test(segment.slice(0, 60))) continue;
 
-        storePrices.push(entry);
+      // Find the store config
+      const storeConfig = knownStores.find(s => s.name.toLowerCase() === storeName.toLowerCase());
+      if (!storeConfig) continue;
+
+      // Extract all £ prices from this segment (before the next store or VISIT)
+      const segmentClean = segment.split(/VISIT/i)[0]; // cut at VISIT link
+      const allPrices = [...segmentClean.matchAll(/£([\d.]+)/g)].map(m => parseFloat(m[1]));
+
+      if (allPrices.length === 0) continue;
+
+      // Find per-unit price (the one followed by "per ...")
+      let pricePerUnit = null;
+      let unit = null;
+      const unitMatch = segmentClean.match(/£([\d.]+)\s+per\s+([\d]*\s*[\w]+)/i);
+      if (unitMatch) {
+        pricePerUnit = parseFloat(unitMatch[1]);
+        unit = `per ${unitMatch[2].trim()}`;
       }
+
+      // The main price is the first £ amount (current selling price)
+      const price = allPrices[0];
+
+      // Check for loyalty price
+      let loyaltyPrice = null;
+      let loyaltyScheme = null;
+      if (storeConfig.loyaltyRx) {
+        const loyaltyMatch = segmentClean.match(storeConfig.loyaltyRx);
+        if (loyaltyMatch) {
+          loyaltyPrice = parseFloat(loyaltyMatch[1]);
+          loyaltyScheme = storeConfig.loyalty;
+        }
+      }
+
+      // Check for promo text
+      const promoMatch = segmentClean.match(/(\d+\s+FOR\s+£[\d.]+|BUY\s+\d+.+?SAVE|ANY\s+\d+\s+FOR\s+£[\d.]+)/i);
+
+      const entry = {
+        store: storeConfig.name,
+        price,
+        pricePerUnit,
+        unit,
+        loyaltyPrice,
+        loyaltyScheme,
+        promotion: promoMatch ? promoMatch[1].trim() : null,
+      };
+      entry.bestPrice = entry.loyaltyPrice && entry.loyaltyPrice < entry.price
+        ? entry.loyaltyPrice : entry.price;
+
+      storePrices.push(entry);
     }
   }
 
