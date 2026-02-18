@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cozzie Livs Calc</title>
+    <title>cozzie livs calc</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap" rel="stylesheet">
@@ -52,7 +52,7 @@
             </div>
         </section>
 
-        <!-- Loading state -->
+        <!-- Loading -->
         <div id="loading" class="loading" hidden>
             <div class="loading__spinner"></div>
             <p class="loading__text">Searching across supermarkets...</p>
@@ -63,51 +63,29 @@
             </div>
         </div>
 
-        <!-- Results -->
-        <section id="results" class="results" hidden>
-            <div class="results__summary" id="resultsSummary"></div>
-
-            <!-- Cheapest picks -->
-            <div class="cheapest-section" id="cheapestSection" hidden>
-                <h2 class="section-title">
-                    <span class="section-title__icon">⭐</span>
-                    Cheapest finds
-                </h2>
-                <div class="cheapest-grid" id="cheapestGrid"></div>
-            </div>
-
-            <!-- Per-store results -->
-            <div class="store-results">
-                <h2 class="section-title">
-                    <span class="section-title__icon">🏪</span>
-                    Results by store
-                </h2>
-                <div class="store-tabs" id="storeTabs">
-                    <button class="store-tab store-tab--tesco active" data-store="tesco">
-                        <span class="store-tab__dot"></span>Tesco
-                        <span class="store-tab__count" id="countTesco">0</span>
-                    </button>
-                    <button class="store-tab store-tab--sainsburys" data-store="sainsburys">
-                        <span class="store-tab__dot"></span>Sainsbury's
-                        <span class="store-tab__count" id="countSainsburys">0</span>
-                    </button>
-                    <button class="store-tab store-tab--aldi" data-store="aldi">
-                        <span class="store-tab__dot"></span>Aldi
-                        <span class="store-tab__count" id="countAldi">0</span>
-                    </button>
-                </div>
-
-                <div class="product-grid" id="productGrid"></div>
-            </div>
+        <!-- Product Listing (search results) -->
+        <section id="listingSection" class="listing-section" hidden>
+            <p class="listing__summary" id="listingSummary"></p>
+            <div class="listing-grid" id="listingGrid"></div>
         </section>
 
-        <!-- Empty state -->
+        <!-- Product Detail (expanded view) -->
+        <section id="detailSection" class="detail-section" hidden>
+            <button id="detailBack" class="detail__back">← Back to results</button>
+            <div id="detailLoading" class="loading" hidden>
+                <div class="loading__spinner"></div>
+                <p class="loading__text">Loading prices...</p>
+            </div>
+            <div id="detailContent" class="detail__content"></div>
+        </section>
+
+        <!-- Empty -->
         <div id="emptyState" class="empty-state" hidden>
             <div class="empty-state__icon">🔍</div>
             <p class="empty-state__text">No products found. Try a different search term.</p>
         </div>
 
-        <!-- Error state -->
+        <!-- Error -->
         <div id="errorState" class="error-state" hidden>
             <div class="error-state__icon">⚠️</div>
             <p class="error-state__text" id="errorText">Something went wrong. Please try again.</p>
@@ -115,7 +93,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            <p>Prices scraped from public supermarket websites — may not reflect exact in-store prices.</p>
+            <p>Prices sourced from <a href="https://www.trolley.co.uk" target="_blank" rel="noopener">Trolley.co.uk</a> — may not reflect exact in-store prices.</p>
             <p>Built by <a href="/">georglynx.com</a> · Not affiliated with any supermarket.</p>
         </footer>
     </div>

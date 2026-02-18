@@ -1,221 +1,277 @@
 /**
  * Cozzie Livs Calc — Frontend
  *
- * Calls the Netlify Function at /api/search and renders results.
+ * Two-step flow:
+ *   1. Search → shows product listing (1 request to Trolley via our function)
+ *   2. Click product → shows per-store pricing detail (1 more request)
+ *
+ * Client-side cache prevents repeat requests for the same query/product.
  */
 
-// ─── DOM Elements ────────────────────────────────────────────────
-const searchInput = document.getElementById('searchInput');
-const searchBtn = document.getElementById('searchBtn');
-const loading = document.getElementById('loading');
-const results = document.getElementById('results');
-const resultsSummary = document.getElementById('resultsSummary');
-const cheapestSection = document.getElementById('cheapestSection');
-const cheapestGrid = document.getElementById('cheapestGrid');
-const productGrid = document.getElementById('productGrid');
-const emptyState = document.getElementById('emptyState');
-const errorState = document.getElementById('errorState');
-const errorText = document.getElementById('errorText');
-const storeTabs = document.getElementById('storeTabs');
+// ─── DOM ─────────────────────────────────────────────────────────
+const $ = (sel) => document.getElementById(sel);
 
-let currentResults = null;
-let activeStore = 'tesco';
+const searchInput     = $("searchInput");
+const searchBtn       = $("searchBtn");
+const loading         = $("loading");
+const listingSection  = $("listingSection");
+const listingSummary  = $("listingSummary");
+const listingGrid     = $("listingGrid");
+const detailSection   = $("detailSection");
+const detailBack      = $("detailBack");
+const detailLoading   = $("detailLoading");
+const detailContent   = $("detailContent");
+const emptyState      = $("emptyState");
+const errorState      = $("errorState");
+const errorText       = $("errorText");
 
-// ─── Event Listeners ─────────────────────────────────────────────
-searchBtn.addEventListener('click', () => doSearch());
-searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doSearch(); });
+// ─── State ───────────────────────────────────────────────────────
+let lastResults = null;
+const cache = { searches: {}, products: {} }; // simple in-memory cache
 
-document.querySelectorAll('.hint-chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-        searchInput.value = chip.dataset.query;
-        doSearch();
-    });
+// ─── Events ──────────────────────────────────────────────────────
+searchBtn.addEventListener("click", () => doSearch());
+searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
+
+document.querySelectorAll(".hint-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    searchInput.value = chip.dataset.query;
+    doSearch();
+  });
 });
 
-storeTabs.addEventListener('click', (e) => {
-    const tab = e.target.closest('.store-tab');
-    if (!tab) return;
-    activeStore = tab.dataset.store;
-    updateActiveTabs();
-    renderStoreProducts();
+detailBack.addEventListener("click", () => {
+  detailSection.hidden = true;
+  listingSection.hidden = false;
 });
 
-// ─── Search ──────────────────────────────────────────────────────
+// ─── Search (1 request) ──────────────────────────────────────────
 async function doSearch() {
-    const query = searchInput.value.trim();
-    if (!query) return;
+  const query = searchInput.value.trim();
+  if (!query) return;
 
-    showLoading();
+  // Check cache
+  if (cache.searches[query]) {
+    lastResults = cache.searches[query];
+    renderListing(lastResults);
+    showView("listing");
+    return;
+  }
 
-    try {
-        // This hits /api/search, which netlify.toml redirects to /.netlify/functions/search
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&max_results=8`);
+  showView("loading");
 
-        if (!response.ok) {
-            throw new Error(`Server error: ${response.status}`);
-        }
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&max_results=20`);
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
-        const data = await response.json();
-        currentResults = data;
+    const data = await res.json();
+    cache.searches[query] = data; // cache it
+    lastResults = data;
 
-        if (data.totalResults === 0) {
-            showEmpty();
-            return;
-        }
-
-        renderResults(data);
-        showResults();
-
-    } catch (err) {
-        console.error('Search failed:', err);
-        showError(err.message);
+    if (!data.products || data.products.length === 0) {
+      showView("empty");
+      return;
     }
+
+    renderListing(data);
+    showView("listing");
+  } catch (err) {
+    showView("error", err.message);
+  }
 }
 
-// ─── Render Results ──────────────────────────────────────────────
-function renderResults(data) {
-    const storeCount = data.stores.filter(s => (s.products || []).length > 0).length;
-    resultsSummary.innerHTML = `
-        Found <strong>${data.totalResults}</strong> results for
-        "<strong>${escapeHtml(data.query)}</strong>"
-        across <strong>${storeCount}</strong> store${storeCount !== 1 ? 's' : ''}
-    `;
+// ─── Product Detail (1 request) ──────────────────────────────────
+async function openProduct(code, slug) {
+  showView("detail");
+  detailContent.innerHTML = "";
+  detailLoading.hidden = false;
 
-    // Cheapest picks
-    if (data.cheapest && data.cheapest.length > 0) {
-        cheapestGrid.innerHTML = data.cheapest
-            .slice(0, 3)
-            .map((p, i) => renderProductCard(p, i === 0))
-            .join('');
-        cheapestSection.hidden = false;
-    } else {
-        cheapestSection.hidden = true;
-    }
+  // Check cache
+  if (cache.products[code]) {
+    renderDetail(cache.products[code], code);
+    detailLoading.hidden = true;
+    return;
+  }
 
-    // Tab counts
-    for (const sr of data.stores) {
-        const el = document.getElementById(`count${capitalize(sr.store)}`);
-        if (el) el.textContent = (sr.products || []).length;
-    }
+  try {
+    const res = await fetch(`/api/search?product=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}`);
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
 
-    renderStoreProducts();
+    const data = await res.json();
+    cache.products[code] = data; // cache it
+    renderDetail(data, code);
+  } catch (err) {
+    detailContent.innerHTML = `<div class="error-state"><p class="error-state__text">${esc(err.message)}</p></div>`;
+  } finally {
+    detailLoading.hidden = true;
+  }
 }
 
-function renderStoreProducts() {
-    if (!currentResults) return;
+// ─── Render: Listing ─────────────────────────────────────────────
+function renderListing(data) {
+  listingSummary.innerHTML = `<strong>${data.totalResults}</strong> results for "<strong>${esc(data.query)}</strong>"`;
 
-    const storeData = currentResults.stores.find(s => s.store === activeStore);
-
-    if (!storeData) {
-        productGrid.innerHTML = '<div class="store-error">No data available for this store.</div>';
-        return;
-    }
-
-    if (storeData.error) {
-        productGrid.innerHTML = `<div class="store-error">⚠️ Could not reach ${getStoreName(activeStore)}: ${escapeHtml(storeData.error)}</div>`;
-        return;
-    }
-
-    if (!storeData.products || storeData.products.length === 0) {
-        productGrid.innerHTML = `<div class="store-error">No products found at ${getStoreName(activeStore)}.</div>`;
-        return;
-    }
-
-    const globalCheapest = currentResults.cheapest?.[0]?.bestPrice ?? Infinity;
-
-    productGrid.innerHTML = storeData.products
-        .map(p => renderProductCard(p, p.bestPrice === globalCheapest && p.bestPrice > 0))
-        .join('');
-}
-
-// ─── Product Card ────────────────────────────────────────────────
-function renderProductCard(product, isCheapest = false) {
-    const store = product.store;
-    const hasLoyalty = product.loyaltyPrice != null && product.loyaltyPrice < product.regularPrice;
-    const displayPrice = hasLoyalty ? product.loyaltyPrice : product.regularPrice;
-
-    const storeEmoji = { tesco: '🔵', sainsburys: '🟠', aldi: '🔷' }[store] || '🛒';
-
-    // Loyalty badge
-    let loyaltyBadge = '';
-    if (hasLoyalty) {
-        if (store === 'tesco') {
-            loyaltyBadge = '<span class="product-card__loyalty-badge product-card__loyalty-badge--clubcard">Clubcard</span>';
-        } else if (store === 'sainsburys') {
-            loyaltyBadge = '<span class="product-card__loyalty-badge product-card__loyalty-badge--nectar">Nectar</span>';
-        }
-    }
-
-    // Image
-    const imageHtml = product.imageUrl
-        ? `<img class="product-card__img" src="${escapeHtml(product.imageUrl)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'product-card__img--placeholder\\'>${storeEmoji}</div>'">`
-        : `<div class="product-card__img--placeholder">${storeEmoji}</div>`;
-
-    // Name
-    const nameHtml = product.productUrl
-        ? `<a href="${escapeHtml(product.productUrl)}" target="_blank" rel="noopener">${escapeHtml(product.name)}</a>`
-        : escapeHtml(product.name);
-
-    // Price
-    let priceHtml;
-    if (hasLoyalty) {
-        priceHtml = `
-            <span class="product-card__price product-card__price--loyalty">£${displayPrice.toFixed(2)}</span>
-            ${loyaltyBadge}
-            <span class="product-card__price--regular-struck">£${product.regularPrice.toFixed(2)}</span>
-        `;
-    } else {
-        priceHtml = `<span class="product-card__price">£${displayPrice.toFixed(2)}</span>`;
-    }
-
-    // Unit price
-    const unitHtml = product.pricePerUnit && product.unit
-        ? `<div class="product-card__unit">£${product.pricePerUnit.toFixed(2)} ${escapeHtml(product.unit)}</div>`
-        : '';
-
-    // Promotion
-    const promoHtml = product.promotion
-        ? `<div class="product-card__promo">${escapeHtml(product.promotion)}</div>`
-        : '';
+  listingGrid.innerHTML = data.products.map((p) => {
+    const priceHtml = p.price > 0 ? `£${p.price.toFixed(2)}` : "";
+    const wasPriceHtml = p.wasPrice ? `<span class="listing-card__was">£${p.wasPrice.toFixed(2)}</span>` : "";
+    const storeHtml = p.store ? `<span class="listing-card__store listing-card__store--${storeClass(p.store)}">${esc(p.store)}</span>` : "";
+    const weightHtml = p.weight ? `<span class="listing-card__weight">${esc(p.weight)}</span>` : "";
+    const unitHtml = p.pricePerUnit ? `<span class="listing-card__unit">£${p.pricePerUnit.toFixed(2)} ${esc(p.unit || "")}</span>` : "";
 
     return `
-        <div class="product-card ${isCheapest ? 'product-card--cheapest' : ''}">
-            ${imageHtml}
-            <div class="product-card__info">
-                <div class="product-card__store product-card__store--${store}">
-                    ${escapeHtml(getStoreName(store))}
-                </div>
-                <div class="product-card__name">${nameHtml}</div>
-                <div class="product-card__prices">${priceHtml}</div>
-                ${unitHtml}
-                ${promoHtml}
-            </div>
+      <button class="listing-card" onclick="openProduct('${esc(p.code)}', '${esc(p.slug)}')">
+        <img class="listing-card__img" src="${esc(p.imageUrl)}" alt="" loading="lazy"
+             onerror="this.style.display='none'">
+        <div class="listing-card__info">
+          <div class="listing-card__top">
+            ${storeHtml}
+            ${weightHtml}
+          </div>
+          <div class="listing-card__name">${esc(p.name)}</div>
+          <div class="listing-card__bottom">
+            <span class="listing-card__price">${priceHtml}</span>
+            ${wasPriceHtml}
+            ${unitHtml}
+          </div>
         </div>
+        <svg class="listing-card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
     `;
+  }).join("");
 }
 
-// ─── UI State ────────────────────────────────────────────────────
-function showLoading()  { loading.hidden = false; results.hidden = true; emptyState.hidden = true; errorState.hidden = true; }
-function showResults()  { loading.hidden = true; results.hidden = false; emptyState.hidden = true; errorState.hidden = true; }
-function showEmpty()    { loading.hidden = true; results.hidden = true; emptyState.hidden = false; errorState.hidden = true; }
-function showError(msg) { loading.hidden = true; results.hidden = true; emptyState.hidden = true; errorState.hidden = false; errorText.textContent = msg || 'Something went wrong.'; }
+// ─── Render: Detail ──────────────────────────────────────────────
+function renderDetail(data, code) {
+  // Find original listing data for context
+  const listing = lastResults?.products?.find((p) => p.code === code);
 
-function updateActiveTabs() {
-    document.querySelectorAll('.store-tab').forEach(tab => {
-        tab.classList.toggle('active', tab.dataset.store === activeStore);
+  const hasStorePrices = data.storePrices && data.storePrices.length > 0;
+  const hasAlternatives = data.alternatives && data.alternatives.length > 0;
+
+  // Header
+  let html = `
+    <div class="detail__header">
+      ${data.imageUrl ? `<img class="detail__img" src="${esc(data.imageUrl)}" alt="">` : ""}
+      <div class="detail__meta">
+        <h2 class="detail__name">${esc(data.name || listing?.name || "")}</h2>
+        ${data.weight ? `<span class="detail__weight">${esc(data.weight)}</span>` : ""}
+        ${data.priceHistory?.usual ? `<span class="detail__usual">Usually £${data.priceHistory.usual.toFixed(2)}</span>` : ""}
+      </div>
+    </div>
+  `;
+
+  // Store prices
+  if (hasStorePrices) {
+    // Sort by best price
+    const sorted = [...data.storePrices].sort((a, b) => (a.bestPrice || a.price) - (b.bestPrice || b.price));
+
+    html += `<h3 class="detail__section-title">Where to buy</h3>`;
+    html += `<div class="store-prices">`;
+
+    sorted.forEach((sp, i) => {
+      const isCheapest = i === 0;
+      const hasLoyalty = sp.loyaltyPrice && sp.loyaltyPrice < sp.price;
+
+      let loyaltyHtml = "";
+      if (hasLoyalty) {
+        loyaltyHtml = `
+          <div class="sp__loyalty">
+            <span class="sp__loyalty-price">£${sp.loyaltyPrice.toFixed(2)}</span>
+            <span class="sp__loyalty-badge sp__loyalty-badge--${sp.loyaltyScheme?.toLowerCase() || ""}">${esc(sp.loyaltyScheme || "")}</span>
+          </div>
+        `;
+      }
+
+      html += `
+        <div class="sp ${isCheapest ? "sp--cheapest" : ""}">
+          <div class="sp__store sp__store--${storeClass(sp.store)}">
+            ${esc(sp.store)}
+            ${isCheapest ? '<span class="sp__cheapest-tag">CHEAPEST</span>' : ""}
+          </div>
+          <div class="sp__pricing">
+            <span class="sp__price ${hasLoyalty ? "sp__price--struck" : ""}">£${sp.price.toFixed(2)}</span>
+            ${loyaltyHtml}
+            ${sp.pricePerUnit ? `<span class="sp__unit">£${sp.pricePerUnit.toFixed(2)} ${esc(sp.unit || "")}</span>` : ""}
+            ${sp.promotion ? `<span class="sp__promo">${esc(sp.promotion)}</span>` : ""}
+          </div>
+        </div>
+      `;
     });
+
+    html += `</div>`;
+  } else {
+    html += `<p class="detail__no-data">No per-store pricing available for this product.</p>`;
+  }
+
+  // Alternatives
+  if (hasAlternatives) {
+    html += `<h3 class="detail__section-title">Supermarket alternatives</h3>`;
+    html += `<div class="alt-grid">`;
+
+    data.alternatives.forEach((alt) => {
+      html += `
+        <button class="alt-card" onclick="openProduct('${esc(alt.code)}', '${esc(alt.slug)}')">
+          <img class="alt-card__img" src="${esc(alt.imageUrl)}" alt="" loading="lazy"
+               onerror="this.style.display='none'">
+          <div class="alt-card__info">
+            <span class="alt-card__store alt-card__store--${storeClass(alt.store)}">${esc(alt.store)}</span>
+            <span class="alt-card__name">${esc(alt.name)}</span>
+            <span class="alt-card__price">£${alt.price.toFixed(2)}</span>
+            ${alt.pricePerUnit ? `<span class="alt-card__unit">£${alt.pricePerUnit.toFixed(2)} ${esc(alt.unit || "")}</span>` : ""}
+          </div>
+        </button>
+      `;
+    });
+
+    html += `</div>`;
+  }
+
+  // Trolley link
+  const trolleyUrl = listing?.productUrl || `https://www.trolley.co.uk/product/${data.slug || "_"}/${code}`;
+  html += `<a class="detail__trolley-link" href="${esc(trolleyUrl)}" target="_blank" rel="noopener">View full details on Trolley.co.uk →</a>`;
+
+  detailContent.innerHTML = html;
+}
+
+// ─── View Management ─────────────────────────────────────────────
+function showView(view, errorMsg) {
+  loading.hidden = true;
+  listingSection.hidden = true;
+  detailSection.hidden = true;
+  emptyState.hidden = true;
+  errorState.hidden = true;
+
+  switch (view) {
+    case "loading":  loading.hidden = false; break;
+    case "listing":  listingSection.hidden = false; break;
+    case "detail":   detailSection.hidden = false; break;
+    case "empty":    emptyState.hidden = false; break;
+    case "error":
+      errorState.hidden = false;
+      errorText.textContent = errorMsg || "Something went wrong.";
+      break;
+  }
 }
 
 // ─── Utils ───────────────────────────────────────────────────────
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+function esc(str) {
+  if (!str) return "";
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
 }
 
-function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
-
-function getStoreName(store) {
-    return { tesco: 'Tesco', sainsburys: "Sainsbury's", aldi: 'Aldi' }[store] || store;
+function storeClass(name) {
+  const n = (name || "").toLowerCase();
+  if (n.includes("tesco")) return "tesco";
+  if (n.includes("sainsbury")) return "sainsburys";
+  if (n.includes("aldi")) return "aldi";
+  if (n.includes("asda")) return "asda";
+  if (n.includes("morrisons")) return "morrisons";
+  if (n.includes("waitrose")) return "waitrose";
+  if (n.includes("ocado")) return "ocado";
+  if (n.includes("co-op")) return "coop";
+  return "other";
 }

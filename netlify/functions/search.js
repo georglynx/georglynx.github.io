@@ -1,75 +1,14 @@
 /**
  * Cozzie Livs Calc — Netlify Function
  *
- * Serverless endpoint that searches Tesco, Sainsbury's, and Aldi
- * concurrently and returns combined price comparison results.
- *
- * Called by the frontend at: /.netlify/functions/search?q=mozzarella
+ * Two modes:
+ *   GET /api/search?q=mozzarella     → 1 request to Trolley explore page, returns product list
+ *   GET /api/search?product=CODE     → 1 request to Trolley product page, returns per-store detail
  */
 
 const cheerio = require("cheerio");
 
-// ─── Main Handler ────────────────────────────────────────────────
-
-exports.handler = async (event) => {
-  // Only allow GET
-  if (event.httpMethod !== "GET") {
-    return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };
-  }
-
-  const query = (event.queryStringParameters?.q || "").trim();
-  if (!query || query.length > 100) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Invalid query" }) };
-  }
-
-  const maxResults = Math.min(
-    parseInt(event.queryStringParameters?.max_results || "8", 10),
-    20
-  );
-
-  console.log(`Searching for: "${query}"`);
-
-  // Run all 3 scrapers concurrently
-  const [tesco, sainsburys, aldi] = await Promise.allSettled([
-    searchTesco(query, maxResults),
-    searchSainsburys(query, maxResults),
-    searchAldi(query, maxResults),
-  ]);
-
-  // Process results
-  const storeResults = [tesco, sainsburys, aldi].map((result) => {
-    if (result.status === "fulfilled") {
-      return result.value;
-    }
-    return {
-      store: "unknown",
-      query,
-      products: [],
-      error: result.reason?.message || "Scraper failed",
-    };
-  });
-
-  // Collect all products and sort by best price
-  const allProducts = storeResults.flatMap((sr) => sr.products || []);
-  allProducts.sort((a, b) => (a.bestPrice || Infinity) - (b.bestPrice || Infinity));
-
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": "application/json",
-      "Cache-Control": "public, max-age=300", // cache 5 mins
-    },
-    body: JSON.stringify({
-      query,
-      stores: storeResults,
-      cheapest: allProducts.slice(0, 5),
-      totalResults: allProducts.length,
-    }),
-  };
-};
-
-
-// ─── Shared Helpers ──────────────────────────────────────────────
+const TROLLEY = "https://www.trolley.co.uk";
 
 const HEADERS = {
   "User-Agent":
@@ -78,667 +17,337 @@ const HEADERS = {
   "Accept-Language": "en-GB,en;q=0.9",
 };
 
+
+// ─── Main Handler ────────────────────────────────────────────────
+
+exports.handler = async (event) => {
+  if (event.httpMethod !== "GET") {
+    return json(405, { error: "Method not allowed" });
+  }
+
+  const params = event.queryStringParameters || {};
+
+  // Mode 1: Product detail (single product, per-store pricing)
+  if (params.product) {
+    return handleProductDetail(params.product, params.slug || "");
+  }
+
+  // Mode 2: Search (lightweight listing)
+  if (params.q) {
+    return handleSearch(params.q.trim(), parseInt(params.max_results || "20", 10));
+  }
+
+  return json(400, { error: "Provide ?q=search+term or ?product=CODE&slug=product-slug" });
+};
+
+
+// ═════════════════════════════════════════════════════════════════
+// MODE 1: SEARCH — one request, returns product listing
+// ═════════════════════════════════════════════════════════════════
+
+async function handleSearch(query, maxResults) {
+  if (!query || query.length > 120) {
+    return json(400, { error: "Invalid query" });
+  }
+  maxResults = Math.max(1, Math.min(maxResults, 40));
+
+  console.log(`[search] q="${query}"`);
+
+  const slug = query.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+  // Try several URL variants — Trolley uses plural category slugs
+  const urls = [
+    `${TROLLEY}/explore/${slug}s`,
+    `${TROLLEY}/explore/${slug}`,
+    `${TROLLEY}/explore/${slug}es`,
+    `${TROLLEY}/search/?q=${encodeURIComponent(query)}`,
+  ];
+
+  for (const url of urls) {
+    try {
+      console.log(`[search] trying ${url}`);
+      const html = await fetchPage(url);
+      if (!html || html.length < 200) continue;
+
+      const products = parseListingPage(html, maxResults);
+      if (products.length > 0) {
+        console.log(`[search] found ${products.length} products`);
+        return json(200, {
+          query,
+          products,
+          totalResults: products.length,
+          source: "trolley.co.uk",
+        });
+      }
+    } catch (err) {
+      console.log(`[search] ${url} failed: ${err.message}`);
+    }
+  }
+
+  return json(200, { query, products: [], totalResults: 0, source: "trolley.co.uk" });
+}
+
 /**
- * Fetch a URL with timeout and error handling.
+ * Parse a Trolley explore/search page into a product listing.
  */
-async function fetchPage(url, timeoutMs = 12000) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+function parseListingPage(html, max) {
+  const $ = cheerio.load(html);
+  const products = [];
+  const seen = new Set();
 
-  try {
-    const response = await fetch(url, {
-      headers: HEADERS,
-      signal: controller.signal,
-      redirect: "follow",
-    });
+  $('a[href*="/product/"]').each((_, el) => {
+    if (products.length >= max) return false;
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    const $a = $(el);
+    const href = $a.attr("href") || "";
+    const m = href.match(/\/product\/([^/]+)\/([A-Z0-9]{3,})/);
+    if (!m) return;
+
+    const [, slug, code] = m;
+    if (seen.has(code)) return;
+    seen.add(code);
+
+    const title = $a.attr("title") || "";
+    const text = $a.text().replace(/\s+/g, " ").trim();
+
+    // Name
+    let name = title;
+    if (!name) {
+      const inner = $a.find("strong, b, h3, h4").first().text().trim();
+      name = inner || text.split("£")[0].replace(/\d+g\b|\d+ml\b|\d+l\b|\d+kg\b/gi, "").trim();
+    }
+    if (!name || name.length < 3) return;
+
+    // Price (first £ amount visible)
+    const priceMatch = text.match(/£([\d.]+)/);
+    const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+
+    // Weight
+    const wm = text.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|pt)\b/i);
+    const weight = wm ? `${wm[1]}${wm[2]}` : null;
+
+    // Per-unit price
+    const um = text.match(/£([\d.]+)\s+per\s+([\d]*\s*\w+)/i);
+
+    // Store brand
+    const storeNames = ["Tesco", "Sainsbury's", "Aldi", "Asda", "Morrisons", "Waitrose", "Ocado", "Co-op", "M&S", "Iceland"];
+    let store = "";
+    for (const s of storeNames) {
+      if (text.includes(s)) { store = s; break; }
     }
 
-    return await response.text();
-  } finally {
-    clearTimeout(timeout);
+    // Image
+    const imgSrc = $a.find("img").attr("src") || "";
+    const imageUrl = imgSrc
+      ? (imgSrc.startsWith("/") ? `${TROLLEY}${imgSrc}` : imgSrc)
+      : `${TROLLEY}/img/product/${code}`;
+
+    // Deal info — look for strikethrough/original price pattern
+    // Trolley shows: "£2.00  £3.00  £1.00 less"
+    let wasPrice = null;
+    const dealMatch = text.match(/£([\d.]+)\s+£([\d.]+)\s+£?[\d.]+[p]?\s+less/i);
+    if (dealMatch) {
+      wasPrice = parseFloat(dealMatch[2]);
+    }
+
+    products.push({
+      name,
+      code,
+      slug,
+      store,
+      price,
+      wasPrice,
+      weight,
+      pricePerUnit: um ? parseFloat(um[1]) : null,
+      unit: um ? `per ${um[2]}` : null,
+      imageUrl,
+      productUrl: `${TROLLEY}${href}`,
+    });
+  });
+
+  return products;
+}
+
+
+// ═════════════════════════════════════════════════════════════════
+// MODE 2: PRODUCT DETAIL — one request, returns per-store pricing
+// ═════════════════════════════════════════════════════════════════
+
+async function handleProductDetail(code, slug) {
+  if (!code || !code.match(/^[A-Z0-9]{3,}$/)) {
+    return json(400, { error: "Invalid product code" });
+  }
+
+  // Build URL — we need the slug for the URL path
+  const url = slug
+    ? `${TROLLEY}/product/${slug}/${code}`
+    : `${TROLLEY}/product/_/${code}`; // Trolley redirects even with wrong slugs
+
+  console.log(`[product] fetching ${url}`);
+
+  try {
+    const html = await fetchPage(url);
+    if (!html) return json(404, { error: "Product not found" });
+
+    const detail = parseProductPage(html, code);
+    return json(200, detail);
+  } catch (err) {
+    console.error(`[product] error: ${err.message}`);
+    return json(500, { error: err.message });
   }
 }
 
 /**
- * Extract a numeric price from text like "£1.50", "150p", etc.
+ * Parse a Trolley product detail page.
+ * Extracts: per-store pricing (inc loyalty), alternatives, reviews.
  */
-function extractPrice(text) {
-  if (!text) return 0;
-  if (typeof text === "number") return text;
-  text = String(text);
+function parseProductPage(html, code) {
+  const $ = cheerio.load(html);
+  const fullText = $.text().replace(/\s+/g, " ");
 
-  // £1.50
-  let match = text.match(/£([\d.]+)/);
-  if (match) return parseFloat(match[1]);
+  // Product name
+  const name = $("h1").first().text().trim() || "";
 
-  // 150p
-  match = text.match(/(\d+)p/);
-  if (match) return parseFloat(match[1]) / 100;
+  // Weight
+  const wm = fullText.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|pt)\b/i);
+  const weight = wm ? `${wm[1]}${wm[2]}` : null;
 
-  // bare number
-  match = text.match(/[\d.]+/);
-  if (match) return parseFloat(match[0]);
+  // Image
+  const imgSrc = $('img[src*="/img/product/"]').first().attr("src") || "";
+  const imageUrl = imgSrc ? (imgSrc.startsWith("/") ? `${TROLLEY}${imgSrc}` : imgSrc) : null;
 
-  return 0;
-}
+  // ── "Where To Buy" — main store pricing ──
+  const storePrices = [];
 
-/**
- * Build a standardised product object.
- */
-function makeProduct(store, { name, regularPrice, loyaltyPrice, pricePerUnit, unit, imageUrl, productUrl, promotion, weight }) {
-  const bestPrice = loyaltyPrice != null && loyaltyPrice < regularPrice
-    ? loyaltyPrice
-    : regularPrice;
+  const wtbIdx = fullText.indexOf("Where To Buy");
+  const altIdx = fullText.indexOf("Supermarket Alternatives");
+  const revIdx = fullText.indexOf("Reviews");
+  const sectionEnd = altIdx >= 0 ? altIdx : (revIdx >= 0 ? revIdx : wtbIdx + 1000);
+  const wtbText = wtbIdx >= 0 ? fullText.slice(wtbIdx, sectionEnd) : "";
+
+  if (wtbText) {
+    const patterns = [
+      { name: "Tesco",       rx: /Tesco\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?\s*(?:£([\d.]+)\s*CLUBCARD)?/i, loyalty: "Clubcard" },
+      { name: "Sainsbury's", rx: /Sainsbury'?s?\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?\s*(?:£([\d.]+)\s*NECTAR)?/i, loyalty: "Nectar" },
+      { name: "Aldi",        rx: /Aldi\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
+      { name: "Asda",        rx: /Asda\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
+      { name: "Morrisons",   rx: /Morrisons\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
+      { name: "Waitrose",    rx: /Waitrose\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
+      { name: "Ocado",       rx: /Ocado\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
+      { name: "Co-op",       rx: /Co-op\s+\*?\*?£([\d.]+)\*?\*?\s*(?:£([\d.]+)\s+per\s+([\w]+))?/i },
+    ];
+
+    for (const p of patterns) {
+      const m = wtbText.match(p.rx);
+      if (m) {
+        const entry = {
+          store: p.name,
+          price: parseFloat(m[1]),
+          pricePerUnit: m[2] ? parseFloat(m[2]) : null,
+          unit: m[3] ? `per ${m[3]}` : null,
+          loyaltyPrice: m[4] ? parseFloat(m[4]) : null,
+          loyaltyScheme: m[4] ? p.loyalty : null,
+        };
+        entry.bestPrice = entry.loyaltyPrice && entry.loyaltyPrice < entry.price
+          ? entry.loyaltyPrice : entry.price;
+
+        // Check for promo text
+        const promoRx = new RegExp(p.name + "[^£]*?(\\d+\\s+FOR\\s+£[\\d.]+|BUY\\s+\\d+.+?SAVE|ANY\\s+\\d+\\s+FOR\\s+£[\\d.]+)", "i");
+        const promoM = wtbText.match(promoRx);
+        entry.promotion = promoM ? promoM[1] : null;
+
+        storePrices.push(entry);
+      }
+    }
+  }
+
+  // ── "Supermarket Alternatives" — similar products at other stores ──
+  const alternatives = [];
+  let inAlts = false;
+
+  $('a[href*="/product/"]').each((_, el) => {
+    const $a = $(el);
+    const aText = $a.text().replace(/\s+/g, " ").trim();
+    const aHref = $a.attr("href") || "";
+
+    // Detect when we're in the alternatives section
+    if (aText.includes("Supermarket Alternative")) inAlts = true;
+
+    const pm = aHref.match(/\/product\/([^/]+)\/([A-Z0-9]{3,})/);
+    if (!pm) return;
+    if (pm[2] === code) return; // skip self
+
+    // Only count products that show a store name and price
+    const storeNames = ["Tesco", "Sainsbury's", "Aldi", "Asda", "Morrisons", "Waitrose", "Ocado", "Co-op", "Iceland", "M&S"];
+    for (const sn of storeNames) {
+      if (!aText.includes(sn)) continue;
+
+      const priceM = aText.match(/£([\d.]+)/);
+      if (!priceM) break;
+
+      const umM = aText.match(/£([\d.]+)\s+per\s+([\w]+)/i);
+      const altName = $a.attr("title") || aText.split("£")[0].trim();
+
+      // Image
+      const altImg = $a.find("img").attr("src") || "";
+
+      alternatives.push({
+        name: altName,
+        code: pm[2],
+        slug: pm[1],
+        store: sn,
+        price: parseFloat(priceM[1]),
+        pricePerUnit: umM ? parseFloat(umM[1]) : null,
+        unit: umM ? `per ${umM[2]}` : null,
+        imageUrl: altImg ? (altImg.startsWith("/") ? `${TROLLEY}${altImg}` : altImg) : `${TROLLEY}/img/product/${pm[2]}`,
+        productUrl: `${TROLLEY}${aHref}`,
+      });
+      break;
+    }
+  });
+
+  // ── Price history hint ──
+  let usualPrice = null;
+  let highestPrice = null;
+  const usualM = fullText.match(/Usually\s+£([\d.]+)/i);
+  if (usualM) usualPrice = parseFloat(usualM[1]);
+  const highM = fullText.match(/Highest\s+£([\d.]+)/i);
+  if (highM) highestPrice = parseFloat(highM[1]);
 
   return {
-    store,
-    name: name || "",
-    regularPrice: regularPrice || 0,
-    loyaltyPrice: loyaltyPrice ?? null,
-    pricePerUnit: pricePerUnit ?? null,
-    unit: unit ?? null,
-    imageUrl: imageUrl ?? null,
-    productUrl: productUrl ?? null,
-    promotion: promotion ?? null,
-    weight: weight ?? null,
-    bestPrice,
+    code,
+    name,
+    weight,
+    imageUrl,
+    storePrices,
+    alternatives: alternatives.slice(0, 8),
+    priceHistory: { usual: usualPrice, highest: highestPrice },
+    source: "trolley.co.uk",
   };
 }
 
 
-// ═══════════════════════════════════════════════════════════════════
-// TESCO SCRAPER
-// ═══════════════════════════════════════════════════════════════════
+// ─── Helpers ─────────────────────────────────────────────────────
 
-async function searchTesco(query, maxResults) {
-  const result = { store: "tesco", query, products: [], error: null };
-
+async function fetchPage(url, timeoutMs = 10000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const url = `https://www.tesco.com/groceries/en-GB/search?query=${encodeURIComponent(query)}`;
-    const html = await fetchPage(url);
-    const $ = cheerio.load(html);
-
-    // Method 1: Parse __NEXT_DATA__ (most reliable)
-    const nextDataScript = $("#__NEXT_DATA__");
-    if (nextDataScript.length) {
-      try {
-        const data = JSON.parse(nextDataScript.html());
-        const products = parseTescoNextData(data, maxResults);
-        if (products.length > 0) {
-          result.products = products;
-          return result;
-        }
-      } catch (e) {
-        console.log("Tesco __NEXT_DATA__ parse failed:", e.message);
-      }
-    }
-
-    // Method 2: Parse HTML product tiles
-    result.products = parseTescoHTML($, maxResults);
-
-  } catch (e) {
-    console.error("Tesco scraper error:", e.message);
-    result.error = e.message;
-  }
-
-  return result;
-}
-
-function parseTescoNextData(data, maxResults) {
-  const products = [];
-
-  try {
-    const pageProps = data?.props?.pageProps || {};
-
-    // Try various paths where Tesco stores search results
-    const items =
-      pageProps?.results?.productItems ||
-      pageProps?.results?.results ||
-      pageProps?.searchResults?.productItems ||
-      [];
-
-    for (const item of items.slice(0, maxResults)) {
-      const prod = item.product || item;
-      const name = prod.title || prod.name;
-      if (!name) continue;
-
-      // Regular price
-      let regularPrice = 0;
-      if (typeof prod.price === "number") {
-        regularPrice = prod.price;
-      } else if (typeof prod.price === "string") {
-        regularPrice = extractPrice(prod.price);
-      }
-
-      // Clubcard price — look in promotions
-      let clubcardPrice = null;
-      const promotions = prod.promotions || [];
-      for (const promo of promotions) {
-        const desc = (promo.description || "").toLowerCase();
-        if (desc.includes("clubcard")) {
-          if (promo.price != null) {
-            clubcardPrice = parseFloat(promo.price);
-          } else if (promo.offerPrice != null) {
-            clubcardPrice = parseFloat(promo.offerPrice);
-          } else {
-            const match = (promo.description || "").match(/£([\d.]+)/);
-            if (match) clubcardPrice = parseFloat(match[1]);
-          }
-          break;
-        }
-      }
-
-      // Unit price
-      let pricePerUnit = null;
-      let unit = null;
-      const unitStr = prod.unitPrice || prod.unitOfSale || "";
-      if (unitStr) {
-        const match = String(unitStr).match(/£?([\d.]+)\s*\/?\s*(\w+)/);
-        if (match) {
-          pricePerUnit = parseFloat(match[1]);
-          unit = `per ${match[2]}`;
-        }
-      }
-
-      // Image
-      const imageUrl = prod.defaultImageUrl || prod.imageUrl || null;
-
-      // Product URL
-      const productId = prod.id || "";
-      const productUrl = productId
-        ? `https://www.tesco.com/groceries/en-GB/products/${productId}`
-        : null;
-
-      // Promo text
-      const promoText = promotions[0]?.description || null;
-
-      products.push(
-        makeProduct("tesco", {
-          name,
-          regularPrice,
-          loyaltyPrice: clubcardPrice,
-          pricePerUnit,
-          unit,
-          imageUrl,
-          productUrl,
-          promotion: promoText,
-          weight: prod.unitOfMeasure || null,
-        })
-      );
-    }
-  } catch (e) {
-    console.log("Tesco __NEXT_DATA__ product parse error:", e.message);
-  }
-
-  return products;
-}
-
-function parseTescoHTML($, maxResults) {
-  const products = [];
-
-  const tiles = $(
-    '[data-auto="product-tile"], .product-list--list-item, li[class*="product"]'
-  );
-
-  tiles.slice(0, maxResults).each((_, el) => {
-    try {
-      const $el = $(el);
-
-      // Name
-      const nameEl = $el.find(
-        '[data-auto="product-tile--title"], h3 a, .product-tile--title'
-      );
-      const name = nameEl.text().trim();
-      if (!name) return;
-
-      // Price
-      const priceEl = $el.find(
-        '[data-auto="price-value"], .price-per-sellable-unit .value, .beans-price__text'
-      );
-      const regularPrice = extractPrice(priceEl.text());
-
-      // Clubcard price
-      let clubcardPrice = null;
-      const ccEl = $el.find('[class*="clubcard"], [class*="Clubcard"], .offer-text');
-      if (ccEl.length) {
-        const ccText = ccEl.text();
-        if (ccText.toLowerCase().includes("clubcard")) {
-          const match = ccText.match(/£([\d.]+)/);
-          if (match) clubcardPrice = parseFloat(match[1]);
-        }
-      }
-
-      // Image
-      const imgEl = $el.find("img");
-      const imageUrl = imgEl.attr("src") || null;
-
-      // URL
-      const linkEl = $el.find("a[href*='/products/']");
-      let productUrl = null;
-      if (linkEl.length) {
-        const href = linkEl.attr("href") || "";
-        productUrl = href.startsWith("/") ? `https://www.tesco.com${href}` : href;
-      }
-
-      products.push(
-        makeProduct("tesco", {
-          name,
-          regularPrice,
-          loyaltyPrice: clubcardPrice,
-          imageUrl,
-          productUrl,
-        })
-      );
-    } catch (e) {
-      // skip this product
-    }
-  });
-
-  return products;
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// SAINSBURY'S SCRAPER
-// ═══════════════════════════════════════════════════════════════════
-
-async function searchSainsburys(query, maxResults) {
-  const result = { store: "sainsburys", query, products: [], error: null };
-
-  try {
-    const url = `https://www.sainsburys.co.uk/gol-ui/SearchResults/${encodeURIComponent(query)}`;
-    const html = await fetchPage(url);
-    const $ = cheerio.load(html);
-
-    // Method 1: Look for embedded JSON state
-    $("script").each((_, el) => {
-      const text = $(el).html() || "";
-
-      if (text.includes("__PRELOADED_STATE__") || text.includes("searchResults")) {
-        try {
-          const match = text.match(
-            /(?:__PRELOADED_STATE__|__NEXT_DATA__)\s*=\s*({.+?});?\s*$/s
-          );
-          if (match) {
-            const data = JSON.parse(match[1]);
-            const products = parseSainsburysState(data, maxResults);
-            if (products.length > 0) {
-              result.products = products;
-              return false; // break .each
-            }
-          }
-        } catch (e) {
-          // continue
-        }
-      }
-    });
-
-    if (result.products.length > 0) return result;
-
-    // Method 2: __NEXT_DATA__
-    const nextData = $("#__NEXT_DATA__");
-    if (nextData.length) {
-      try {
-        const data = JSON.parse(nextData.html());
-        const pageProps = data?.props?.pageProps || {};
-        const products = parseSainsburysState(pageProps, maxResults);
-        if (products.length > 0) {
-          result.products = products;
-          return result;
-        }
-      } catch (e) {
-        console.log("Sainsbury's __NEXT_DATA__ parse failed:", e.message);
-      }
-    }
-
-    // Method 3: HTML fallback
-    result.products = parseSainsburysHTML($, maxResults);
-
-  } catch (e) {
-    console.error("Sainsbury's scraper error:", e.message);
-    result.error = e.message;
-  }
-
-  return result;
-}
-
-function parseSainsburysState(data, maxResults) {
-  const products = [];
-
-  try {
-    const searchData = data.search || data.searchResults || data;
-    const items =
-      searchData.products ||
-      searchData.results ||
-      searchData.data?.products ||
-      [];
-
-    for (const item of items.slice(0, maxResults)) {
-      const name = item.name || item.productName;
-      if (!name) continue;
-
-      // Price
-      let regularPrice = 0;
-      const rp = item.retailPrice;
-      if (typeof rp === "object" && rp !== null) {
-        regularPrice = parseFloat(rp.price || 0);
-      } else if (rp != null) {
-        regularPrice = parseFloat(rp);
-      }
-
-      // Nectar price
-      let nectarPrice = null;
-      const promos = item.promotions || [];
-      for (const promo of promos) {
-        const desc = (promo.description || "").toLowerCase();
-        if (desc.includes("nectar")) {
-          if (promo.price != null) nectarPrice = parseFloat(promo.price);
-          else if (promo.offerPrice != null) nectarPrice = parseFloat(promo.offerPrice);
-          else {
-            const match = (promo.description || "").match(/£([\d.]+)/);
-            if (match) nectarPrice = parseFloat(match[1]);
-          }
-          break;
-        }
-      }
-
-      // Also check dedicated nectar fields
-      if (nectarPrice == null) {
-        const np = item.nectarPrice || item.nectar_price;
-        if (np != null) {
-          nectarPrice = typeof np === "object" ? parseFloat(np.price || 0) : parseFloat(np);
-        }
-      }
-
-      // Unit price
-      let pricePerUnit = null;
-      let unit = null;
-      const up = item.unitPrice;
-      if (typeof up === "object" && up !== null) {
-        pricePerUnit = parseFloat(up.price || 0) || null;
-        unit = up.measure ? `per ${up.measure}` : null;
-      }
-
-      // Image & URL
-      const imageUrl = item.image || item.imageUrl || null;
-      let productUrl = item.url || item.productUrl || null;
-      if (productUrl && !productUrl.startsWith("http")) {
-        productUrl = `https://www.sainsburys.co.uk${productUrl}`;
-      }
-
-      const promoText = promos[0]?.description || null;
-
-      products.push(
-        makeProduct("sainsburys", {
-          name,
-          regularPrice,
-          loyaltyPrice: nectarPrice,
-          pricePerUnit,
-          unit,
-          imageUrl,
-          productUrl,
-          promotion: promoText,
-          weight: item.unitOfMeasure || item.size || null,
-        })
-      );
-    }
-  } catch (e) {
-    console.log("Sainsbury's state parse error:", e.message);
-  }
-
-  return products;
-}
-
-function parseSainsburysHTML($, maxResults) {
-  const products = [];
-
-  const cards = $(
-    '[data-test-id="product-tile"], .pt-grid-item, .product-grid .ln-c-card, li[class*="product"]'
-  );
-
-  cards.slice(0, maxResults).each((_, el) => {
-    try {
-      const $el = $(el);
-
-      const nameEl = $el.find(
-        '[data-test-id="product-tile-name"], a[data-test-id="product-title"], h2 a, h3 a, .pt__info__description'
-      );
-      const name = nameEl.text().trim();
-      if (!name) return;
-
-      const priceEl = $el.find(
-        '[data-test-id="pt-retail-price"], .pt__cost__retail-price, .pricing-now'
-      );
-      const regularPrice = extractPrice(priceEl.text());
-
-      // Nectar
-      let nectarPrice = null;
-      const nectarEl = $el.find('[class*="nectar"], [data-test-id*="nectar"]');
-      if (nectarEl.length) {
-        const nt = nectarEl.text();
-        if (nt.toLowerCase().includes("nectar")) {
-          const match = nt.match(/£([\d.]+)/);
-          if (match) nectarPrice = parseFloat(match[1]);
-        }
-      }
-
-      // Unit price
-      let pricePerUnit = null;
-      let unit = null;
-      const unitEl = $el.find('[data-test-id="pt-unit-price"], .pt__cost__unit-price');
-      if (unitEl.length) {
-        const match = unitEl.text().match(/£?([\d.]+)\s*\/?\s*(\w+)/);
-        if (match) {
-          pricePerUnit = parseFloat(match[1]);
-          unit = `per ${match[2]}`;
-        }
-      }
-
-      // Image & URL
-      const imgEl = $el.find("img");
-      const imageUrl = imgEl.attr("src") || null;
-
-      const linkEl = $el.find("a[href]");
-      let productUrl = null;
-      if (linkEl.length) {
-        const href = linkEl.attr("href") || "";
-        if (href.startsWith("/")) productUrl = `https://www.sainsburys.co.uk${href}`;
-        else if (href.startsWith("http")) productUrl = href;
-      }
-
-      products.push(
-        makeProduct("sainsburys", {
-          name,
-          regularPrice,
-          loyaltyPrice: nectarPrice,
-          pricePerUnit,
-          unit,
-          imageUrl,
-          productUrl,
-        })
-      );
-    } catch (e) {
-      // skip
-    }
-  });
-
-  return products;
-}
-
-
-// ═══════════════════════════════════════════════════════════════════
-// ALDI SCRAPER
-// ═══════════════════════════════════════════════════════════════════
-
-async function searchAldi(query, maxResults) {
-  const result = { store: "aldi", query, products: [], error: null };
-
-  try {
-    const url = `https://www.aldi.co.uk/search?q=${encodeURIComponent(query)}`;
-    const html = await fetchPage(url);
-    const $ = cheerio.load(html);
-
-    // Method 1: JSON-LD structured data
-    $('script[type="application/ld+json"]').each((_, el) => {
-      try {
-        const data = JSON.parse($(el).html());
-        const items = Array.isArray(data) ? data : [data];
-        for (const item of items) {
-          if (item["@type"] === "Product") {
-            const product = parseAldiJsonLd(item);
-            if (product) result.products.push(product);
-          }
-        }
-      } catch (e) {
-        // continue
-      }
-    });
-
-    if (result.products.length > 0) {
-      result.products = result.products.slice(0, maxResults);
-      return result;
-    }
-
-    // Method 2: __NEXT_DATA__
-    const nextData = $("#__NEXT_DATA__");
-    if (nextData.length) {
-      try {
-        const data = JSON.parse(nextData.html());
-        const products = parseAldiNextData(data, maxResults);
-        if (products.length > 0) {
-          result.products = products;
-          return result;
-        }
-      } catch (e) {
-        console.log("Aldi __NEXT_DATA__ parse failed:", e.message);
-      }
-    }
-
-    // Method 3: HTML fallback
-    result.products = parseAldiHTML($, maxResults);
-
-  } catch (e) {
-    console.error("Aldi scraper error:", e.message);
-    result.error = e.message;
-  }
-
-  return result;
-}
-
-function parseAldiJsonLd(data) {
-  try {
-    const name = data.name;
-    if (!name) return null;
-
-    let offers = data.offers || {};
-    if (Array.isArray(offers)) offers = offers[0] || {};
-
-    const price = parseFloat(offers.price || 0);
-
-    return makeProduct("aldi", {
-      name,
-      regularPrice: price,
-      imageUrl: data.image || null,
-      productUrl: data.url || null,
-    });
-  } catch (e) {
-    return null;
+    const res = await fetch(url, { headers: HEADERS, signal: controller.signal, redirect: "follow" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
+  } finally {
+    clearTimeout(timer);
   }
 }
 
-function parseAldiNextData(data, maxResults) {
-  const products = [];
-
-  try {
-    const pageProps = data?.props?.pageProps || {};
-    const items =
-      pageProps.searchResults?.products ||
-      pageProps.products ||
-      pageProps.results ||
-      [];
-
-    for (const item of items.slice(0, maxResults)) {
-      const name = item.name || item.productName;
-      if (!name) continue;
-
-      const price = parseFloat(item.price || item.retailPrice || 0);
-
-      let imageUrl = item.image || item.imageUrl || null;
-      let productUrl = item.url || item.productUrl || null;
-      if (productUrl && !productUrl.startsWith("http")) {
-        productUrl = `https://www.aldi.co.uk${productUrl}`;
-      }
-
-      const unitPrice = item.unitPrice ? parseFloat(item.unitPrice) : null;
-      const unit = item.unitOfMeasure ? `per ${item.unitOfMeasure}` : null;
-
-      products.push(
-        makeProduct("aldi", {
-          name,
-          regularPrice: price,
-          pricePerUnit: unitPrice,
-          unit,
-          imageUrl,
-          productUrl,
-          weight: item.size || null,
-        })
-      );
-    }
-  } catch (e) {
-    console.log("Aldi __NEXT_DATA__ parse error:", e.message);
-  }
-
-  return products;
-}
-
-function parseAldiHTML($, maxResults) {
-  const products = [];
-
-  const tiles = $(
-    '.hover-item, [data-qa="search-product-tile"], .category-item, .product-tile'
-  );
-
-  tiles.slice(0, maxResults).each((_, el) => {
-    try {
-      const $el = $(el);
-
-      const nameEl = $el.find(
-        ".hover-item__title, a.category-item__title, [data-qa=\"product-title\"], h3, h4"
-      );
-      const name = nameEl.text().trim();
-      if (!name) return;
-
-      const priceEl = $el.find(
-        ".hover-item__price, .category-item__price, [data-qa=\"product-price\"], .product-tile-price"
-      );
-      const regularPrice = extractPrice(priceEl.text());
-
-      const imgEl = $el.find("img");
-      const imageUrl = imgEl.attr("src") || imgEl.attr("data-src") || null;
-
-      const linkEl = $el.find("a[href]");
-      let productUrl = null;
-      if (linkEl.length) {
-        const href = linkEl.attr("href") || "";
-        if (href.startsWith("/")) productUrl = `https://www.aldi.co.uk${href}`;
-        else if (href.startsWith("http")) productUrl = href;
-      }
-
-      products.push(
-        makeProduct("aldi", {
-          name,
-          regularPrice,
-          imageUrl,
-          productUrl,
-        })
-      );
-    } catch (e) {
-      // skip
-    }
-  });
-
-  return products;
+function json(status, body) {
+  return {
+    statusCode: status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": status === 200 ? "public, max-age=900" : "no-cache", // 15 min cache on success
+    },
+    body: JSON.stringify(body),
+  };
 }
