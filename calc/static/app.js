@@ -390,16 +390,22 @@ async function doBasketSearch() {
 
 // ─── Basket: Score and filter products ───────────────────────────
 function scoreAndFilter(products, query, selectedStores) {
-  // Tokenize query
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+  // Tokenize query — keep even short words (e.g. "6" in "6 eggs")
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+
+  console.log(`[basket] scoreAndFilter: query="${query}", stores=${selectedStores.join(",")}, products=${products.length}`);
 
   // Filter by store + name match
   const filtered = products.filter((p) => {
     if (!p.store || !selectedStores.includes(p.store)) return false;
     if (p.price <= 0) return false;
     const nameLower = (p.name || "").toLowerCase();
-    return words.every((w) => nameLower.includes(w));
+    // Require all query words with 2+ chars to appear in name
+    // Short words (1 char) are optional to avoid filtering on articles
+    return words.filter((w) => w.length > 1).every((w) => nameLower.includes(w));
   });
+
+  console.log(`[basket] after filter: ${filtered.length} products`);
 
   // Sort by per-unit price (or raw price fallback)
   filtered.sort((a, b) => {
@@ -416,6 +422,8 @@ function scoreAndFilter(products, query, selectedStores) {
       groups[p.store].push(p);
     }
   }
+
+  console.log(`[basket] store groups: ${Object.entries(groups).map(([s,ps]) => `${s}(${ps.length})`).join(", ") || "none"}`);
 
   return groups;
 }

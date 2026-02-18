@@ -95,6 +95,9 @@ function parseListingPage(html, max) {
   const products = [];
   const seen = new Set();
 
+  const allStoreNames = ["Tesco", "Sainsbury's", "Aldi", "Asda", "Morrisons", "Waitrose", "Ocado", "Co-op", "M&S", "Iceland"];
+  const storePattern = new RegExp(`(${allStoreNames.map(s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|")})`, "gi");
+
   $('a[href*="/product/"]').each((_, el) => {
     if (products.length >= max) return false;
 
@@ -104,37 +107,23 @@ function parseListingPage(html, max) {
     if (!m) return;
 
     const [, slug, code] = m;
-    if (seen.has(code)) return;
-    seen.add(code);
-
     const title = $a.attr("title") || "";
     const text = $a.text().replace(/\s+/g, " ").trim();
 
-    // Name
+    // Name — extract before "Where to buy" section
     let name = title;
     if (!name) {
       const inner = $a.find("strong, b, h3, h4").first().text().trim();
-      name = inner || text.split("£")[0].replace(/\d+g\b|\d+ml\b|\d+l\b|\d+kg\b/gi, "").trim();
+      name = inner || text.split(/Where to buy|£/i)[0].replace(/\d+g\b|\d+ml\b|\d+l\b|\d+kg\b/gi, "").trim();
     }
     if (!name || name.length < 3) return;
-
-    // Price (first £ amount visible)
-    const priceMatch = text.match(/£([\d.]+)/);
-    const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
 
     // Weight
     const wm = text.match(/(\d+(?:\.\d+)?)\s*(g|kg|ml|l|pt)\b/i);
     const weight = wm ? `${wm[1]}${wm[2]}` : null;
 
-    // Per-unit price
+    // Per-unit price (shown once for the product)
     const um = text.match(/£([\d.]+)\s+per\s+([\d]*\s*\w+)/i);
-
-    // Store brand
-    const storeNames = ["Tesco", "Sainsbury's", "Aldi", "Asda", "Morrisons", "Waitrose", "Ocado", "Co-op", "M&S", "Iceland"];
-    let store = "";
-    for (const s of storeNames) {
-      if (text.includes(s)) { store = s; break; }
-    }
 
     // Image
     const imgSrc = $a.find("img").attr("src") || "";
@@ -142,27 +131,70 @@ function parseListingPage(html, max) {
       ? (imgSrc.startsWith("/") ? `${TROLLEY}${imgSrc}` : imgSrc)
       : `${TROLLEY}/img/product/${code}`;
 
-    // Deal info — look for strikethrough/original price pattern
-    // Trolley shows: "£2.00  £3.00  £1.00 less"
-    let wasPrice = null;
-    const dealMatch = text.match(/£([\d.]+)\s+£([\d.]+)\s+£?[\d.]+[p]?\s+less/i);
-    if (dealMatch) {
-      wasPrice = parseFloat(dealMatch[2]);
-    }
+    // ── Parse "Where to buy" for per-store prices ──
+    const wtbIdx = text.search(/Where to buy/i);
+    const wtbText = wtbIdx >= 0 ? text.slice(wtbIdx) : "";
 
-    products.push({
-      name,
-      code,
-      slug,
-      store,
-      price,
-      wasPrice,
-      weight,
-      pricePerUnit: um ? parseFloat(um[1]) : null,
-      unit: um ? `per ${um[2]}` : null,
-      imageUrl,
-      productUrl: `${TROLLEY}${href}`,
-    });
+    if (wtbText) {
+      // Split by store names to get per-store segments
+      const parts = wtbText.split(storePattern);
+      // parts: [before, storeName, segment, storeName, segment, ...]
+      for (let i = 1; i < parts.length - 1; i += 2) {
+        if (products.length >= max) break;
+        const storeName = parts[i];
+        const segment = parts[i + 1] || "";
+
+        // Normalise store name to match known list
+        const storeNorm = allStoreNames.find(s => s.toLowerCase() === storeName.toLowerCase()) || storeName;
+
+        const priceMatch = segment.match(/£([\d.]+)/);
+        if (!priceMatch) continue;
+
+        const key = `${code}-${storeNorm}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        products.push({
+          name,
+          code,
+          slug,
+          store: storeNorm,
+          price: parseFloat(priceMatch[1]),
+          wasPrice: null,
+          weight,
+          pricePerUnit: um ? parseFloat(um[1]) : null,
+          unit: um ? `per ${um[2]}` : null,
+          imageUrl,
+          productUrl: `${TROLLEY}${href}`,
+        });
+      }
+    } else {
+      // Fallback: no "Where to buy" — try to detect a single store from text
+      if (seen.has(code)) return;
+      seen.add(code);
+
+      let store = "";
+      for (const s of allStoreNames) {
+        if (text.includes(s)) { store = s; break; }
+      }
+
+      const priceMatch = text.match(/£([\d.]+)/);
+      const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+
+      products.push({
+        name,
+        code,
+        slug,
+        store,
+        price,
+        wasPrice: null,
+        weight,
+        pricePerUnit: um ? parseFloat(um[1]) : null,
+        unit: um ? `per ${um[2]}` : null,
+        imageUrl,
+        productUrl: `${TROLLEY}${href}`,
+      });
+    }
   });
 
   return products;
