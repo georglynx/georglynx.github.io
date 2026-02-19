@@ -149,7 +149,7 @@ function buildByStore(products, query) {
   const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
   const byStore = {};
   for (const p of products) {
-    const store = p.store || detectStore(p.name);
+    const store = p.store || detectStore(p.name, p.slug);
     if (!store || p.price <= 0) continue;
     if (words.length > 0) {
       const nl = (p.name || "").toLowerCase();
@@ -392,14 +392,14 @@ function scoreAndFilter(products, query, selectedStores) {
   const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
 
   const filtered = products.filter((p) => {
-    const store = p.store || detectStore(p.name);
+    const store = p.store || detectStore(p.name, p.slug);
     if (!store || !selectedStores.includes(store)) return false;
     if (p.price <= 0) return false;
     const nl = (p.name || "").toLowerCase();
     return words.every((w) => nl.includes(w));
   });
 
-  filtered.forEach((p) => { if (!p.store) p.store = detectStore(p.name) || ""; });
+  filtered.forEach((p) => { if (!p.store) p.store = detectStore(p.name, p.slug) || ""; });
 
   filtered.sort((a, b) => (a.pricePerUnit || a.price) - (b.pricePerUnit || b.price));
 
@@ -634,10 +634,23 @@ function effectiveUnitCost(p) {
 // UTILS
 // ═════════════════════════════════════════════════════════════════
 
-function detectStore(name) {
-  if (!name) return "";
-  for (const s of STORE_NAMES) {
-    if (name.startsWith(s) || name.toLowerCase().startsWith(s.toLowerCase())) return s;
+function detectStore(name, slug) {
+  if (name) {
+    for (const s of STORE_NAMES) {
+      if (name.startsWith(s) || name.toLowerCase().startsWith(s.toLowerCase())) return s;
+    }
+  }
+  if (slug) {
+    const sl = slug.toLowerCase();
+    if (sl.startsWith("tesco"))      return "Tesco";
+    if (sl.startsWith("sainsburys")) return "Sainsbury's";
+    if (sl.startsWith("aldi"))       return "Aldi";
+    if (sl.startsWith("asda"))       return "Asda";
+    if (sl.startsWith("morrisons"))  return "Morrisons";
+    if (sl.startsWith("waitrose"))   return "Waitrose";
+    if (sl.startsWith("ocado"))      return "Ocado";
+    if (sl.startsWith("coop") || sl.startsWith("co-op")) return "Co-op";
+    if (sl.startsWith("iceland"))    return "Iceland";
   }
   return "";
 }
