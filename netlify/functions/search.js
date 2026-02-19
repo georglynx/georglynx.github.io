@@ -136,10 +136,13 @@ function parseListingPage(html, max) {
     // Per-unit price
     const um = text.match(/£([\d.]+)\s+per\s+([\d]*\s*\w+)/i);
 
-    // Store — detect from product name prefix (most reliable for own-brand)
+    // Store — detect from product name prefix, then slug (slug is most reliable)
     let store = "";
     for (const s of knownStoreNames) {
-      if (name.startsWith(s) || text.startsWith(s)) { store = s; break; }
+      const sSlug = s.toLowerCase().replace(/[^a-z0-9]/g, ""); // e.g. "sainsburys", "coop"
+      if (name.startsWith(s) || text.startsWith(s) || slug.toLowerCase().startsWith(sSlug)) {
+        store = s; break;
+      }
     }
 
     // Image
