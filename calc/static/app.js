@@ -69,12 +69,7 @@ const CLARIFICATIONS = {
 
 function getClarification(query) {
   const q = query.toLowerCase().trim();
-  if (CLARIFICATIONS[q]) return { key: q, variants: CLARIFICATIONS[q] };
-  for (const [key, variants] of Object.entries(CLARIFICATIONS)) {
-    if (q.includes(key)) return { key, variants };
-    if (key.split(" ").some(kw => q === kw)) return { key, variants };
-  }
-  return null;
+  return CLARIFICATIONS[q] ? { key: q, variants: CLARIFICATIONS[q] } : null;
 }
 
 // ─── Mode Toggle ─────────────────────────────────────────────────
@@ -115,7 +110,7 @@ async function doSearch(variantOverride) {
   showSearchView("loading");
 
   if (cache.searches[effectiveQuery]) {
-    const byStore = buildByStore(cache.searches[effectiveQuery].products, effectiveQuery);
+    const byStore = buildByStore(cache.searches[effectiveQuery].products, query);
     currentCompareByStore = byStore;
     renderCompareTable();
     showSearchView("compare");
@@ -124,14 +119,14 @@ async function doSearch(variantOverride) {
   }
 
   try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(effectiveQuery)}&max_results=30`);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(effectiveQuery)}`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     const data = await res.json();
     cache.searches[effectiveQuery] = data;
 
     if (!data.products || data.products.length === 0) { showSearchView("empty"); return; }
 
-    const byStore = buildByStore(data.products, effectiveQuery);
+    const byStore = buildByStore(data.products, query);
     currentCompareByStore = byStore;
     renderCompareTable();
     showSearchView("compare");
@@ -196,7 +191,7 @@ function renderCompareTable() {
   `;
 
   if (sorted.length === 0) {
-    html += `<p class="cmp-empty">No matching products found. Try a broader search term.</p>`;
+    html += `<p class="cmp-empty">No supermarket own-brand products found. Try a more specific search (e.g. "cheddar cheese" instead of "cheese"), or check <a href="https://www.trolley.co.uk/search/?q=${encodeURIComponent(searchInput.value.trim())}" target="_blank" rel="noopener">Trolley.co.uk</a> directly.</p>`;
   } else {
     sorted.forEach(([store, p], i) => {
       const isCheapest = i === 0;
@@ -338,7 +333,7 @@ async function doBasketSearch() {
         data = cache.searches[ing];
       } else {
         if (i > 0) await delay(2500);
-        const res = await fetch(`/api/search?q=${encodeURIComponent(ing)}&max_results=20`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(ing)}`);
         if (!res.ok) throw new Error(`Failed to search for "${ing}"`);
         data = await res.json();
         cache.searches[ing] = data;

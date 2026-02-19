@@ -34,7 +34,7 @@ exports.handler = async (event) => {
 
   // Mode 2: Search (lightweight listing)
   if (params.q) {
-    return handleSearch(params.q.trim(), parseInt(params.max_results || "20", 10));
+    return handleSearch(params.q.trim(), parseInt(params.max_results || "200", 10));
   }
 
   return json(400, { error: "Provide ?q=search+term or ?product=CODE&slug=product-slug" });
@@ -49,7 +49,7 @@ async function handleSearch(query, maxResults) {
   if (!query || query.length > 120) {
     return json(400, { error: "Invalid query" });
   }
-  maxResults = Math.max(1, Math.min(maxResults, 40));
+  maxResults = Math.max(1, Math.min(maxResults, 500));
 
   console.log(`[search] q="${query}"`);
 
