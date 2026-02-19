@@ -2,58 +2,86 @@
  * Cozzie Livs Calc — Frontend
  *
  * Two modes:
- *   SEARCH: Single product search → listing → per-store detail
- *   BASKET: Ingredient list → staggered search → per-store basket totals
- *
- * Client-side cache prevents repeat requests for the same query/product.
+ *   SEARCH: Type a product → optional clarification → per-store compare view
+ *           (loyalty prices enriched in background via 2 detail calls)
+ *   BASKET: Ingredient list → staggered search → loyalty second pass → totals
  */
 
 // ─── DOM ─────────────────────────────────────────────────────────
 const $ = (sel) => document.getElementById(sel);
 
-// Search mode
-const searchInput     = $("searchInput");
-const searchBtn       = $("searchBtn");
-const loading         = $("loading");
-const listingSection  = $("listingSection");
-const listingSummary  = $("listingSummary");
-const listingGrid     = $("listingGrid");
-const detailSection   = $("detailSection");
-const detailBack      = $("detailBack");
-const detailLoading   = $("detailLoading");
-const detailContent   = $("detailContent");
-const emptyState      = $("emptyState");
-const errorState      = $("errorState");
-const errorText       = $("errorText");
+const searchInput          = $("searchInput");
+const searchBtn            = $("searchBtn");
+const loading              = $("loading");
+const clarificationSection = $("clarificationSection");
+const compareSection       = $("compareSection");
+const emptyState           = $("emptyState");
+const errorState           = $("errorState");
+const errorText            = $("errorText");
 
-// Basket mode
-const basketTextarea    = $("basketTextarea");
-const basketProgress    = $("basketProgress");
-const basketProgressMsg = $("basketProgressMsg");
-const basketProgressList = $("basketProgressList");
-const basketResults     = $("basketResults");
-const basketSummary     = $("basketSummary");
-const basketIngredients = $("basketIngredients");
-const basketError       = $("basketError");
-const basketErrorText   = $("basketErrorText");
+const basketTextarea       = $("basketTextarea");
+const basketProgress       = $("basketProgress");
+const basketProgressMsg    = $("basketProgressMsg");
+const basketProgressList   = $("basketProgressList");
+const basketResults        = $("basketResults");
+const basketSummary        = $("basketSummary");
+const basketIngredients    = $("basketIngredients");
+const basketError          = $("basketError");
+const basketErrorText      = $("basketErrorText");
 
 // ─── State ───────────────────────────────────────────────────────
-let lastResults = null;
-let currentMode = "search";
-let basketSearching = false;
+let currentMode         = "search";
+let basketSearching     = false;
+let pendingVariant      = "";
+let currentCompareByStore = {};   // live reference for loyalty enrichment
 const cache = { searches: {}, products: {} };
 
-// Basket state: { ingredientName: { store: product, ... } }
 let basketSelections = {};
-// All basket data: { ingredientName: { storeGroups: { store: [products] }, allFiltered: [] } }
-let basketData = {};
+let basketData       = {};
+
+// ─── Known stores ────────────────────────────────────────────────
+const STORE_NAMES = [
+  "Tesco", "Sainsbury's", "Aldi", "Asda", "Morrisons",
+  "Waitrose", "Ocado", "Co-op", "Iceland", "M&S",
+];
+const LOYALTY_STORES = ["Tesco", "Sainsbury's"]; // only these have schemes
+
+// ─── Clarification prompts ────────────────────────────────────────
+const CLARIFICATIONS = {
+  "olive oil":  ["Extra Virgin", "Virgin", "Light", "Any"],
+  "eggs":       ["Free Range", "Organic", "Standard", "Any"],
+  "milk":       ["Full Fat", "Semi-Skimmed", "Skimmed", "Any"],
+  "butter":     ["Salted", "Unsalted", "Any"],
+  "bread":      ["White", "Wholemeal", "Sourdough", "Any"],
+  "chicken":    ["Breast", "Thighs", "Whole", "Mince", "Any"],
+  "mince":      ["Beef", "Pork", "Turkey", "Lamb", "Any"],
+  "beef":       ["Mince", "Steak", "Diced", "Any"],
+  "cheese":     ["Cheddar", "Mozzarella", "Parmesan", "Brie", "Any"],
+  "pasta":      ["Spaghetti", "Penne", "Fusilli", "Rigatoni", "Any"],
+  "rice":       ["Basmati", "Long Grain", "Brown", "Any"],
+  "yoghurt":    ["Natural", "Greek", "Flavoured", "Any"],
+  "yogurt":     ["Natural", "Greek", "Flavoured", "Any"],
+  "coffee":     ["Ground", "Instant", "Beans", "Any"],
+  "tea":        ["English Breakfast", "Green", "Herbal", "Any"],
+  "juice":      ["Orange", "Apple", "Cranberry", "Any"],
+  "oil":        ["Olive", "Vegetable", "Sunflower", "Coconut", "Any"],
+};
+
+function getClarification(query) {
+  const q = query.toLowerCase().trim();
+  if (CLARIFICATIONS[q]) return { key: q, variants: CLARIFICATIONS[q] };
+  for (const [key, variants] of Object.entries(CLARIFICATIONS)) {
+    if (q.includes(key)) return { key, variants };
+    if (key.split(" ").some(kw => q === kw)) return { key, variants };
+  }
+  return null;
+}
 
 // ─── Mode Toggle ─────────────────────────────────────────────────
 function switchMode(mode) {
   currentMode = mode;
   $("searchMode").hidden = mode !== "search";
   $("basketMode").hidden = mode !== "basket";
-
   document.querySelectorAll(".mode-toggle__btn").forEach((btn) => {
     btn.classList.toggle("mode-toggle__btn--active", btn.dataset.mode === mode);
   });
@@ -62,206 +90,183 @@ function switchMode(mode) {
 // ─── Events ──────────────────────────────────────────────────────
 searchBtn.addEventListener("click", () => doSearch());
 searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") doSearch(); });
-
 document.querySelectorAll(".hint-chip").forEach((chip) => {
-  chip.addEventListener("click", () => {
-    searchInput.value = chip.dataset.query;
-    doSearch();
-  });
+  chip.addEventListener("click", () => { searchInput.value = chip.dataset.query; doSearch(); });
 });
 
-detailBack.addEventListener("click", () => {
-  detailSection.hidden = true;
-  listingSection.hidden = false;
-});
 
 // ═════════════════════════════════════════════════════════════════
 // SEARCH MODE
 // ═════════════════════════════════════════════════════════════════
 
-async function doSearch() {
+async function doSearch(variantOverride) {
   const query = searchInput.value.trim();
   if (!query) return;
 
-  if (cache.searches[query]) {
-    lastResults = cache.searches[query];
-    renderListing(lastResults);
-    showView("listing");
+  if (!variantOverride) {
+    const clar = getClarification(query);
+    if (clar) { showClarification(query, clar.variants); return; }
+  }
+
+  const variant = variantOverride === "Any" ? "" : (variantOverride || "");
+  const effectiveQuery = variant ? `${variant} ${query}` : query;
+  pendingVariant = variant;
+
+  showSearchView("loading");
+
+  if (cache.searches[effectiveQuery]) {
+    const byStore = buildByStore(cache.searches[effectiveQuery].products, effectiveQuery);
+    currentCompareByStore = byStore;
+    renderCompareTable();
+    showSearchView("compare");
+    enrichCompareWithLoyalty(); // background
     return;
   }
 
-  showView("loading");
-
   try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&max_results=20`);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(effectiveQuery)}&max_results=30`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
     const data = await res.json();
-    cache.searches[query] = data;
-    lastResults = data;
+    cache.searches[effectiveQuery] = data;
 
-    if (!data.products || data.products.length === 0) {
-      showView("empty");
-      return;
+    if (!data.products || data.products.length === 0) { showSearchView("empty"); return; }
+
+    const byStore = buildByStore(data.products, effectiveQuery);
+    currentCompareByStore = byStore;
+    renderCompareTable();
+    showSearchView("compare");
+    enrichCompareWithLoyalty(); // background — updates table in place
+  } catch (err) {
+    showSearchView("error", err.message);
+  }
+}
+
+function showClarification(query, variants) {
+  showSearchView("clarification");
+  $("clarLabel").textContent = `What kind of ${query}?`;
+  $("clarChips").innerHTML = variants.map((v) =>
+    `<button class="clar-chip" onclick="doSearch('${esc(v)}')">${esc(v)}</button>`
+  ).join("");
+}
+
+/** Build the store→product map from listing products */
+function buildByStore(products, query) {
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
+  const byStore = {};
+  for (const p of products) {
+    const store = p.store || detectStore(p.name);
+    if (!store || p.price <= 0) continue;
+    if (words.length > 0) {
+      const nl = (p.name || "").toLowerCase();
+      if (!words.every((w) => nl.includes(w))) continue;
     }
-
-    renderListing(data);
-    showView("listing");
-  } catch (err) {
-    showView("error", err.message);
+    const unitCost = p.pricePerUnit || p.price;
+    if (!byStore[store] || unitCost < (byStore[store].pricePerUnit || byStore[store].price)) {
+      byStore[store] = { ...p, store };
+    }
   }
+  return byStore;
 }
 
-async function openProduct(code, slug) {
-  showView("detail");
-  detailContent.innerHTML = "";
-  detailLoading.hidden = false;
+/** Render (or re-render) the compare table from currentCompareByStore */
+function renderCompareTable() {
+  const byStore = currentCompareByStore;
 
-  if (cache.products[code]) {
-    renderDetail(cache.products[code], code);
-    detailLoading.hidden = true;
-    return;
-  }
+  // Sort by effective best price (loyalty if enriched, else listing price)
+  const sorted = Object.entries(byStore).sort((a, b) => {
+    const aP = effectiveUnitCost(a[1]);
+    const bP = effectiveUnitCost(b[1]);
+    return aP - bP;
+  });
 
-  try {
-    const res = await fetch(`/api/search?product=${encodeURIComponent(code)}&slug=${encodeURIComponent(slug)}`);
-    if (!res.ok) throw new Error(`Server error: ${res.status}`);
-
-    const data = await res.json();
-    cache.products[code] = data;
-    renderDetail(data, code);
-  } catch (err) {
-    detailContent.innerHTML = `<div class="error-state"><p class="error-state__text">${esc(err.message)}</p></div>`;
-  } finally {
-    detailLoading.hidden = true;
-  }
-}
-
-function renderListing(data) {
-  listingSummary.innerHTML = `<strong>${data.totalResults}</strong> results for "<strong>${esc(data.query)}</strong>"`;
-
-  listingGrid.innerHTML = data.products.map((p) => {
-    const priceHtml = p.price > 0 ? `£${p.price.toFixed(2)}` : "";
-    const wasPriceHtml = p.wasPrice ? `<span class="listing-card__was">£${p.wasPrice.toFixed(2)}</span>` : "";
-    const storeHtml = p.store ? `<span class="listing-card__store listing-card__store--${storeClass(p.store)}">${esc(p.store)}</span>` : "";
-    const weightHtml = p.weight ? `<span class="listing-card__weight">${esc(p.weight)}</span>` : "";
-    const unitHtml = p.pricePerUnit ? `<span class="listing-card__unit">£${p.pricePerUnit.toFixed(2)} ${esc(p.unit || "")}</span>` : "";
-
-    return `
-      <button class="listing-card" onclick="openProduct('${esc(p.code)}', '${esc(p.slug)}')">
-        <img class="listing-card__img" src="${esc(p.imageUrl)}" alt="" loading="lazy"
-             onerror="this.style.display='none'">
-        <div class="listing-card__info">
-          <div class="listing-card__top">
-            ${storeHtml}
-            ${weightHtml}
-          </div>
-          <div class="listing-card__name">${esc(p.name)}</div>
-          <div class="listing-card__bottom">
-            <span class="listing-card__price">${priceHtml}</span>
-            ${wasPriceHtml}
-            ${unitHtml}
-          </div>
-        </div>
-        <svg class="listing-card__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      </button>
-    `;
-  }).join("");
-}
-
-function renderDetail(data, code) {
-  const listing = lastResults?.products?.find((p) => p.code === code);
-  const hasStorePrices = data.storePrices && data.storePrices.length > 0;
-  const hasAlternatives = data.alternatives && data.alternatives.length > 0;
+  const variantNote = pendingVariant
+    ? `<span class="cmp-variant">Showing: ${esc(pendingVariant)} ${esc(searchInput.value.trim())}</span>` : "";
+  const changeLink = pendingVariant
+    ? `<button class="cmp-change-btn" onclick="showClarification(searchInput.value.trim(), getClarification(searchInput.value.trim())?.variants || [])">Change variant</button>` : "";
 
   let html = `
-    <div class="detail__header">
-      ${data.imageUrl ? `<img class="detail__img" src="${esc(data.imageUrl)}" alt="">` : ""}
-      <div class="detail__meta">
-        <h2 class="detail__name">${esc(data.name || listing?.name || "")}</h2>
-        ${data.weight ? `<span class="detail__weight">${esc(data.weight)}</span>` : ""}
-        ${data.priceHistory?.usual ? `<span class="detail__usual">Usually £${data.priceHistory.usual.toFixed(2)}</span>` : ""}
+    <div class="cmp-header">
+      <div class="cmp-header__left">
+        ${variantNote}
+        <p class="cmp-header__sub">${sorted.length} store${sorted.length !== 1 ? "s" : ""} found &mdash; sorted cheapest first</p>
       </div>
+      ${changeLink}
     </div>
+    <div class="cmp-table">
   `;
 
-  if (hasStorePrices) {
-    const sorted = [...data.storePrices].sort((a, b) => (a.bestPrice || a.price) - (b.bestPrice || b.price));
-    html += `<h3 class="detail__section-title">Where to buy</h3>`;
-    html += `<div class="store-prices">`;
-
-    sorted.forEach((sp, i) => {
+  if (sorted.length === 0) {
+    html += `<p class="cmp-empty">No matching products found. Try a broader search term.</p>`;
+  } else {
+    sorted.forEach(([store, p], i) => {
       const isCheapest = i === 0;
-      const hasLoyalty = sp.loyaltyPrice && sp.loyaltyPrice < sp.price;
-      let loyaltyHtml = "";
+      const hasLoyalty = p.loyaltyPrice && p.loyaltyPrice < p.price;
+
+      let priceHtml = `<span class="cmp-price">£${p.price.toFixed(2)}</span>`;
       if (hasLoyalty) {
-        loyaltyHtml = `
-          <div class="sp__loyalty">
-            <span class="sp__loyalty-price">£${sp.loyaltyPrice.toFixed(2)}</span>
-            <span class="sp__loyalty-badge sp__loyalty-badge--${sp.loyaltyScheme?.toLowerCase() || ""}">${esc(sp.loyaltyScheme || "")}</span>
-          </div>
+        priceHtml = `
+          <span class="cmp-price cmp-price--struck">£${p.price.toFixed(2)}</span>
+          <span class="cmp-loyalty-price">
+            £${p.loyaltyPrice.toFixed(2)}
+            <span class="cmp-loyalty-badge cmp-loyalty-badge--${(p.loyaltyScheme || "").toLowerCase()}">${esc(p.loyaltyScheme)}</span>
+          </span>
         `;
       }
+
       html += `
-        <div class="sp ${isCheapest ? "sp--cheapest" : ""}">
-          <div class="sp__store sp__store--${storeClass(sp.store)}">
-            ${esc(sp.store)}
-            ${isCheapest ? '<span class="sp__cheapest-tag">CHEAPEST</span>' : ""}
-          </div>
-          <div class="sp__pricing">
-            <span class="sp__price ${hasLoyalty ? "sp__price--struck" : ""}">£${sp.price.toFixed(2)}</span>
-            ${loyaltyHtml}
-            ${sp.pricePerUnit ? `<span class="sp__unit">£${sp.pricePerUnit.toFixed(2)} ${esc(sp.unit || "")}</span>` : ""}
-            ${sp.promotion ? `<span class="sp__promo">${esc(sp.promotion)}</span>` : ""}
-          </div>
-        </div>
+        <a class="cmp-row ${isCheapest ? "cmp-row--cheapest" : ""}"
+           href="${esc(p.productUrl)}" target="_blank" rel="noopener">
+          <span class="cmp-store cmp-store--${storeClass(store)}">${esc(store)}</span>
+          <span class="cmp-product">
+            <span class="cmp-product__name">${esc(p.name)}</span>
+            <span class="cmp-product__meta">
+              ${p.weight ? `<span class="cmp-product__weight">${esc(p.weight)}</span>` : ""}
+              ${p.onSale ? `<span class="cmp-sale">↓ on sale</span>` : ""}
+              ${p.promotion ? `<span class="cmp-promo">${esc(p.promotion)}</span>` : ""}
+            </span>
+          </span>
+          <span class="cmp-prices">
+            ${priceHtml}
+            ${p.pricePerUnit ? `<span class="cmp-unit">£${p.pricePerUnit.toFixed(2)} ${esc(p.unit || "")}</span>` : ""}
+          </span>
+          ${isCheapest ? '<span class="cmp-badge">CHEAPEST</span>' : '<span class="cmp-arrow">→</span>'}
+        </a>
       `;
     });
-    html += `</div>`;
-  } else {
-    html += `<p class="detail__no-data">No per-store pricing available for this product.</p>`;
   }
 
-  if (hasAlternatives) {
-    html += `<h3 class="detail__section-title">Supermarket alternatives</h3>`;
-    html += `<div class="alt-grid">`;
-    data.alternatives.forEach((alt) => {
-      html += `
-        <button class="alt-card" onclick="openProduct('${esc(alt.code)}', '${esc(alt.slug)}')">
-          <img class="alt-card__img" src="${esc(alt.imageUrl)}" alt="" loading="lazy"
-               onerror="this.style.display='none'">
-          <div class="alt-card__info">
-            <span class="alt-card__store alt-card__store--${storeClass(alt.store)}">${esc(alt.store)}</span>
-            <span class="alt-card__name">${esc(alt.name)}</span>
-            <span class="alt-card__price">£${alt.price.toFixed(2)}</span>
-            ${alt.pricePerUnit ? `<span class="alt-card__unit">£${alt.pricePerUnit.toFixed(2)} ${esc(alt.unit || "")}</span>` : ""}
-          </div>
-        </button>
-      `;
-    });
-    html += `</div>`;
-  }
-
-  const trolleyUrl = listing?.productUrl || `https://www.trolley.co.uk/product/${data.slug || "_"}/${code}`;
-  html += `<a class="detail__trolley-link" href="${esc(trolleyUrl)}" target="_blank" rel="noopener">View full details on Trolley.co.uk &rarr;</a>`;
-
-  detailContent.innerHTML = html;
+  html += `</div>`;
+  compareSection.innerHTML = html;
 }
 
-function showView(view, errorMsg) {
+/** Fetch loyalty prices for Tesco + Sainsbury's in parallel, then re-render */
+async function enrichCompareWithLoyalty() {
+  const byStore = currentCompareByStore; // capture ref
+  const toFetch = LOYALTY_STORES.filter(s => byStore[s]);
+  if (toFetch.length === 0) return;
+
+  await Promise.all(toFetch.map(async (store) => {
+    const p = byStore[store];
+    const loyalty = await fetchLoyaltyInfo(p);
+    if (loyalty && byStore === currentCompareByStore) {
+      byStore[store] = { ...byStore[store], ...loyalty };
+    }
+  }));
+
+  if (byStore === currentCompareByStore) renderCompareTable();
+}
+
+function showSearchView(view, errorMsg) {
   loading.hidden = true;
-  listingSection.hidden = true;
-  detailSection.hidden = true;
+  clarificationSection.hidden = true;
+  compareSection.hidden = true;
   emptyState.hidden = true;
   errorState.hidden = true;
-
   switch (view) {
-    case "loading":  loading.hidden = false; break;
-    case "listing":  listingSection.hidden = false; break;
-    case "detail":   detailSection.hidden = false; break;
-    case "empty":    emptyState.hidden = false; break;
+    case "loading":       loading.hidden = false; break;
+    case "clarification": clarificationSection.hidden = false; break;
+    case "compare":       compareSection.hidden = false; break;
+    case "empty":         emptyState.hidden = false; break;
     case "error":
       errorState.hidden = false;
       errorText.textContent = errorMsg || "Something went wrong.";
@@ -288,36 +293,27 @@ function getSelectedStores() {
   return [...document.querySelectorAll(".store-check input:checked")].map((cb) => cb.value);
 }
 
-function delay(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+function delay(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-// ─── Basket: Main search loop ────────────────────────────────────
 async function doBasketSearch() {
   const text = basketTextarea.value.trim();
-  if (!text) return;
-  if (basketSearching) return;
+  if (!text || basketSearching) return;
 
-  const ingredients = text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0);
+  const ingredients = text.split("\n").map((s) => s.trim()).filter(Boolean);
   if (ingredients.length === 0) return;
 
   const stores = getSelectedStores();
-  if (stores.length === 0) {
-    alert("Please select at least one store.");
-    return;
-  }
+  if (stores.length === 0) { alert("Please select at least one store."); return; }
 
   basketSearching = true;
   basketSelections = {};
   basketData = {};
 
-  // Show progress, hide other basket views
   $("basketInput").hidden = true;
   basketProgress.hidden = false;
   basketResults.hidden = true;
   basketError.hidden = true;
 
-  // Build progress list
   basketProgressList.innerHTML = ingredients.map((ing, i) => `
     <div class="bp-item" id="bp-${i}">
       <span class="bp-item__icon bp-item__icon--pending">&#x23F3;</span>
@@ -326,47 +322,35 @@ async function doBasketSearch() {
   `).join("");
 
   try {
+    // ── Phase 1: search each ingredient ──────────────────────────
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
-
-      // Update progress UI
       const bpItem = $(`bp-${i}`);
+
       if (bpItem) {
         bpItem.querySelector(".bp-item__icon").innerHTML = '<div class="loading__spinner loading__spinner--sm"></div>';
         bpItem.querySelector(".bp-item__icon").className = "bp-item__icon bp-item__icon--active";
       }
+      basketProgressMsg.textContent = FUN_MESSAGES[i % FUN_MESSAGES.length].replace("{0}", ing);
 
-      // Fun message
-      const msg = FUN_MESSAGES[i % FUN_MESSAGES.length].replace("{0}", ing);
-      basketProgressMsg.textContent = msg;
-
-      // Check cache
       let data;
       if (cache.searches[ing]) {
         data = cache.searches[ing];
       } else {
-        // Delay before non-cached requests (except first)
         if (i > 0) await delay(2500);
-
-        const res = await fetch(`/api/search?q=${encodeURIComponent(ing)}&max_results=15`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(ing)}&max_results=20`);
         if (!res.ok) throw new Error(`Failed to search for "${ing}"`);
         data = await res.json();
         cache.searches[ing] = data;
       }
 
-      // Score, filter, group
       const storeGroups = scoreAndFilter(data.products || [], ing, stores);
       basketData[ing] = storeGroups;
-
-      // Auto-select cheapest per store
       basketSelections[ing] = {};
-      for (const [store, products] of Object.entries(storeGroups)) {
-        if (products.length > 0) {
-          basketSelections[ing][store] = products[0]; // already sorted cheapest first
-        }
+      for (const [store, prods] of Object.entries(storeGroups)) {
+        if (prods.length > 0) basketSelections[ing][store] = { ...prods[0] };
       }
 
-      // Mark done
       if (bpItem) {
         const hasResults = Object.keys(storeGroups).length > 0;
         bpItem.querySelector(".bp-item__icon").innerHTML = hasResults ? "&#x2705;" : "&#x274C;";
@@ -374,7 +358,28 @@ async function doBasketSearch() {
       }
     }
 
-    // Show results
+    // ── Phase 2: enrich Tesco + Sainsbury's with loyalty prices ──
+    const loyaltyStoresSelected = LOYALTY_STORES.filter(s => stores.includes(s));
+    if (loyaltyStoresSelected.length > 0) {
+      basketProgressMsg.textContent = "Checking Clubcard & Nectar prices...";
+      basketProgress.hidden = false;
+
+      for (let i = 0; i < ingredients.length; i++) {
+        const ing = ingredients[i];
+        if (i > 0) await delay(1000);
+
+        // Fetch both loyalty stores in parallel for this ingredient
+        await Promise.all(loyaltyStoresSelected.map(async (store) => {
+          const product = basketSelections[ing]?.[store];
+          if (!product) return;
+          const loyalty = await fetchLoyaltyInfo(product);
+          if (loyalty) {
+            basketSelections[ing][store] = { ...basketSelections[ing][store], ...loyalty };
+          }
+        }));
+      }
+    }
+
     basketProgress.hidden = true;
     basketResults.hidden = false;
     renderBasketResults(ingredients, stores);
@@ -388,93 +393,65 @@ async function doBasketSearch() {
   }
 }
 
-// ─── Basket: Score and filter products ───────────────────────────
 function scoreAndFilter(products, query, selectedStores) {
-  // Tokenize query — keep even short words (e.g. "6" in "6 eggs")
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
+  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
 
-  console.log(`[basket] scoreAndFilter: query="${query}", stores=${selectedStores.join(",")}, products=${products.length}`);
-
-  // Filter by store + name match
   const filtered = products.filter((p) => {
-    if (!p.store || !selectedStores.includes(p.store)) return false;
+    const store = p.store || detectStore(p.name);
+    if (!store || !selectedStores.includes(store)) return false;
     if (p.price <= 0) return false;
-    const nameLower = (p.name || "").toLowerCase();
-    // Require all query words with 2+ chars to appear in name
-    // Short words (1 char) are optional to avoid filtering on articles
-    return words.filter((w) => w.length > 1).every((w) => nameLower.includes(w));
+    const nl = (p.name || "").toLowerCase();
+    return words.every((w) => nl.includes(w));
   });
 
-  console.log(`[basket] after filter: ${filtered.length} products`);
+  filtered.forEach((p) => { if (!p.store) p.store = detectStore(p.name) || ""; });
 
-  // Sort by per-unit price (or raw price fallback)
-  filtered.sort((a, b) => {
-    const aUnit = a.pricePerUnit || a.price;
-    const bUnit = b.pricePerUnit || b.price;
-    return aUnit - bUnit;
-  });
+  filtered.sort((a, b) => (a.pricePerUnit || a.price) - (b.pricePerUnit || b.price));
 
-  // Group by store, top 3 per store
   const groups = {};
   for (const p of filtered) {
     if (!groups[p.store]) groups[p.store] = [];
-    if (groups[p.store].length < 3) {
-      groups[p.store].push(p);
-    }
+    if (groups[p.store].length < 3) groups[p.store].push(p);
   }
-
-  console.log(`[basket] store groups: ${Object.entries(groups).map(([s,ps]) => `${s}(${ps.length})`).join(", ") || "none"}`);
-
   return groups;
 }
 
-// ─── Basket: Render results ──────────────────────────────────────
 function renderBasketResults(ingredients, stores) {
-  // Calculate totals per store
-  const storeTotals = {};
+  const storeTotals  = {};
   const storeMissing = {};
-
-  for (const store of stores) {
-    storeTotals[store] = 0;
-    storeMissing[store] = [];
-  }
+  for (const store of stores) { storeTotals[store] = 0; storeMissing[store] = []; }
 
   for (const ing of ingredients) {
     const selections = basketSelections[ing] || {};
     for (const store of stores) {
       if (selections[store]) {
-        storeTotals[store] += selections[store].price;
+        // Use loyalty price if available (the real cost)
+        const p = selections[store];
+        storeTotals[store] += (p.loyaltyPrice && p.loyaltyPrice < p.price) ? p.loyaltyPrice : p.price;
       } else {
         storeMissing[store].push(ing);
       }
     }
   }
 
-  // Sort stores by total (cheapest first), but put stores with missing items last
   const sortedStores = [...stores].sort((a, b) => {
-    const aMiss = storeMissing[a].length;
-    const bMiss = storeMissing[b].length;
-    if (aMiss !== bMiss) return aMiss - bMiss; // fewer missing first
+    if (storeMissing[a].length !== storeMissing[b].length)
+      return storeMissing[a].length - storeMissing[b].length;
     return storeTotals[a] - storeTotals[b];
   });
 
-  // Render summary
-  let summaryHtml = '<h3 class="basket-summary__title">Basket total by store</h3>';
-  summaryHtml += '<div class="basket-summary__cards">';
-
+  // Summary cards
+  let summaryHtml = '<h3 class="basket-summary__title">Basket total by store</h3><div class="basket-summary__cards">';
   sortedStores.forEach((store, i) => {
-    const total = storeTotals[store];
+    const total   = storeTotals[store];
     const missing = storeMissing[store];
-    const itemCount = ingredients.length - missing.length;
+    const itemCount  = ingredients.length - missing.length;
     const isCheapest = i === 0 && missing.length === 0;
-    const hasAllItems = missing.length === 0;
-
     summaryHtml += `
-      <div class="bs-card ${isCheapest ? "bs-card--cheapest" : ""} ${!hasAllItems ? "bs-card--incomplete" : ""}">
+      <div class="bs-card ${isCheapest ? "bs-card--cheapest" : ""} ${missing.length > 0 ? "bs-card--incomplete" : ""}">
         <div class="bs-card__header">
           <span class="bs-card__store bs-card__store--${storeClass(store)}">
-            ${esc(store)}
-            ${isCheapest ? '<span class="bs-card__tag">CHEAPEST</span>' : ""}
+            ${esc(store)}${isCheapest ? ' <span class="bs-card__tag">CHEAPEST</span>' : ""}
           </span>
           <span class="bs-card__total">${total > 0 ? `£${total.toFixed(2)}` : "—"}</span>
         </div>
@@ -485,17 +462,15 @@ function renderBasketResults(ingredients, stores) {
       </div>
     `;
   });
-
   summaryHtml += '</div>';
   basketSummary.innerHTML = summaryHtml;
 
-  // Render per-ingredient breakdown
+  // Per-ingredient breakdown
   let ingHtml = '<h3 class="basket-ing__title">Per ingredient</h3>';
-
   for (const ing of ingredients) {
-    const groups = basketData[ing] || {};
+    const groups    = basketData[ing] || {};
     const selections = basketSelections[ing] || {};
-    const hasAny = Object.keys(groups).length > 0;
+    const hasAny    = Object.keys(selections).length > 0;
 
     ingHtml += `<div class="bi-row" id="bi-${esc(ing).replace(/\s+/g, "-")}">`;
     ingHtml += `<div class="bi-row__header">${esc(ing)}</div>`;
@@ -505,19 +480,25 @@ function renderBasketResults(ingredients, stores) {
     } else {
       ingHtml += `<div class="bi-row__stores">`;
 
-      // Sort stores by selected product price
       const storesWithProduct = Object.entries(selections)
-        .sort((a, b) => a[1].price - b[1].price);
+        .sort((a, b) => bestPrice(a[1]) - bestPrice(b[1]));
 
       storesWithProduct.forEach(([store, product], idx) => {
-        const isCheap = idx === 0;
-        const alternatives = groups[store] || [];
-        const hasAlts = alternatives.length > 1;
+        const isCheap   = idx === 0;
+        const hasAlts   = (groups[store] || []).length > 1;
+        const hasLoyalty = product.loyaltyPrice && product.loyaltyPrice < product.price;
+
+        let priceHtml = `£${product.price.toFixed(2)}`;
+        let loyaltyHtml = "";
+        if (hasLoyalty) {
+          priceHtml = `<span class="bi-store__price--struck">£${product.price.toFixed(2)}</span>`;
+          loyaltyHtml = `<span class="bi-loyalty-badge bi-loyalty-badge--${(product.loyaltyScheme || "").toLowerCase()}">${esc(product.loyaltyScheme)}</span> £${product.loyaltyPrice.toFixed(2)}`;
+        }
 
         ingHtml += `
           <div class="bi-store ${isCheap ? "bi-store--cheapest" : ""}">
             <span class="bi-store__name bi-store__name--${storeClass(store)}">${esc(store)}</span>
-            <span class="bi-store__price">£${product.price.toFixed(2)}</span>
+            <span class="bi-store__price">${priceHtml}${loyaltyHtml ? " " + loyaltyHtml : ""}</span>
             <span class="bi-store__product">${esc(product.name)}</span>
             ${product.weight ? `<span class="bi-store__weight">${esc(product.weight)}</span>` : ""}
             ${hasAlts ? `<button class="bi-store__change" onclick="showAlternatives('${esc(ing)}', '${esc(store)}')">change</button>` : ""}
@@ -525,7 +506,6 @@ function renderBasketResults(ingredients, stores) {
         `;
       });
 
-      // Show stores that have no match for this ingredient
       for (const store of stores) {
         if (!selections[store]) {
           ingHtml += `
@@ -537,44 +517,32 @@ function renderBasketResults(ingredients, stores) {
           `;
         }
       }
-
       ingHtml += `</div>`;
     }
 
-    // Hidden alternatives picker
-    ingHtml += `<div class="bi-alts" id="alts-${esc(ing).replace(/\s+/g, "-")}" hidden></div>`;
-    ingHtml += `</div>`;
+    ingHtml += `<div class="bi-alts" id="alts-${esc(ing).replace(/\s+/g, "-")}" hidden></div></div>`;
   }
 
+  ingHtml += `<p class="basket-loyalty-note">* Tesco &amp; Sainsbury's totals include Clubcard/Nectar prices where available.</p>`;
   basketIngredients.innerHTML = ingHtml;
 }
 
-// ─── Basket: Show alternatives for a store+ingredient ────────────
 function showAlternatives(ingredient, store) {
   const altId = `alts-${ingredient.replace(/\s+/g, "-")}`;
   const altContainer = $(altId);
   if (!altContainer) return;
-
-  // Toggle off if already showing
-  if (!altContainer.hidden) {
-    altContainer.hidden = true;
-    altContainer.innerHTML = "";
-    return;
-  }
+  if (!altContainer.hidden) { altContainer.hidden = true; altContainer.innerHTML = ""; return; }
 
   const alternatives = (basketData[ingredient] || {})[store] || [];
   const currentSelection = (basketSelections[ingredient] || {})[store];
 
-  let html = `<div class="bi-alts__label">Alternatives at ${esc(store)}:</div>`;
-  html += `<div class="bi-alts__list">`;
-
+  let html = `<div class="bi-alts__label">Alternatives at ${esc(store)}:</div><div class="bi-alts__list">`;
   alternatives.forEach((p) => {
     const isSelected = currentSelection && currentSelection.code === p.code;
     html += `
       <button class="bi-alt-card ${isSelected ? "bi-alt-card--selected" : ""}"
               onclick="selectAlternative('${esc(ingredient)}', '${esc(store)}', '${esc(p.code)}')">
-        <img class="bi-alt-card__img" src="${esc(p.imageUrl)}" alt="" loading="lazy"
-             onerror="this.style.display='none'">
+        <img class="bi-alt-card__img" src="${esc(p.imageUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">
         <div class="bi-alt-card__info">
           <span class="bi-alt-card__name">${esc(p.name)}</span>
           <span class="bi-alt-card__price">£${p.price.toFixed(2)}</span>
@@ -585,27 +553,18 @@ function showAlternatives(ingredient, store) {
       </button>
     `;
   });
-
   html += `</div>`;
   altContainer.innerHTML = html;
   altContainer.hidden = false;
 }
 
-// ─── Basket: Select alternative product ──────────────────────────
 function selectAlternative(ingredient, store, code) {
-  const alternatives = (basketData[ingredient] || {})[store] || [];
-  const product = alternatives.find((p) => p.code === code);
+  const product = ((basketData[ingredient] || {})[store] || []).find((p) => p.code === code);
   if (!product) return;
-
-  basketSelections[ingredient][store] = product;
-
-  // Re-render
-  const stores = getSelectedStores();
-  const ingredients = Object.keys(basketData);
-  renderBasketResults(ingredients, stores);
+  basketSelections[ingredient][store] = { ...product };
+  renderBasketResults(Object.keys(basketData), getSelectedStores());
 }
 
-// ─── Basket: Reset ───────────────────────────────────────────────
 function resetBasket() {
   basketSelections = {};
   basketData = {};
@@ -617,8 +576,76 @@ function resetBasket() {
 
 
 // ═════════════════════════════════════════════════════════════════
+// LOYALTY — shared helpers
+// ═════════════════════════════════════════════════════════════════
+
+/**
+ * Fetch loyalty + promotion + sale info for a product.
+ * Uses the product detail endpoint and returns enrichment fields.
+ * Results cached in cache.products.
+ */
+async function fetchLoyaltyInfo(product) {
+  if (!product?.code) return null;
+
+  let detail = cache.products[product.code];
+  if (!detail) {
+    try {
+      const res = await fetch(
+        `/api/search?product=${encodeURIComponent(product.code)}&slug=${encodeURIComponent(product.slug || "")}`
+      );
+      if (!res.ok) return null;
+      detail = await res.json();
+      cache.products[product.code] = detail;
+    } catch {
+      return null;
+    }
+  }
+
+  // Find the matching store entry in storePrices
+  const storeEntry = (detail.storePrices || []).find(
+    (sp) => sp.store.toLowerCase() === (product.store || "").toLowerCase()
+  );
+  if (!storeEntry) return null;
+
+  const usualPrice = detail.priceHistory?.usual;
+  const isOnSale   = usualPrice && storeEntry.price < usualPrice;
+
+  return {
+    loyaltyPrice:  storeEntry.loyaltyPrice  || null,
+    loyaltyScheme: storeEntry.loyaltyScheme || null,
+    promotion:     storeEntry.promotion     || null,
+    onSale:        isOnSale || false,
+    usualPrice:    usualPrice || null,
+  };
+}
+
+/** The price to use for ranking — loyalty if cheaper, else listing price */
+function bestPrice(p) {
+  return (p.loyaltyPrice && p.loyaltyPrice < p.price) ? p.loyaltyPrice : p.price;
+}
+
+/** Effective unit cost for compare table sorting */
+function effectiveUnitCost(p) {
+  const bp = bestPrice(p);
+  if (p.pricePerUnit && p.price > 0) {
+    // Scale per-unit price by loyalty ratio
+    return p.pricePerUnit * (bp / p.price);
+  }
+  return bp;
+}
+
+
+// ═════════════════════════════════════════════════════════════════
 // UTILS
 // ═════════════════════════════════════════════════════════════════
+
+function detectStore(name) {
+  if (!name) return "";
+  for (const s of STORE_NAMES) {
+    if (name.startsWith(s) || name.toLowerCase().startsWith(s.toLowerCase())) return s;
+  }
+  return "";
+}
 
 function esc(str) {
   if (!str) return "";
@@ -629,13 +656,13 @@ function esc(str) {
 
 function storeClass(name) {
   const n = (name || "").toLowerCase();
-  if (n.includes("tesco")) return "tesco";
+  if (n.includes("tesco"))     return "tesco";
   if (n.includes("sainsbury")) return "sainsburys";
-  if (n.includes("aldi")) return "aldi";
-  if (n.includes("asda")) return "asda";
+  if (n.includes("aldi"))      return "aldi";
+  if (n.includes("asda"))      return "asda";
   if (n.includes("morrisons")) return "morrisons";
-  if (n.includes("waitrose")) return "waitrose";
-  if (n.includes("ocado")) return "ocado";
-  if (n.includes("co-op")) return "coop";
+  if (n.includes("waitrose"))  return "waitrose";
+  if (n.includes("ocado"))     return "ocado";
+  if (n.includes("co-op"))     return "coop";
   return "other";
 }

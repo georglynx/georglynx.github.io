@@ -133,145 +133,103 @@ body {
     50% { opacity: 0.5; transform: scale(0.95); }
 }
 
-/* ─── Listing ────────────────────────────────────────────────── */
-.listing__summary { text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 16px; }
-.listing__summary strong { color: var(--text); }
-.listing-grid { display: flex; flex-direction: column; gap: 8px; }
+/* ─── Clarification Prompt ───────────────────────────────────── */
+.clarification { padding: 24px 0; text-align: center; }
+.clarification__label {
+    font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 16px;
+}
+.clarification__chips { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.clar-chip {
+    font-family: var(--font-body); font-size: 15px; font-weight: 500;
+    padding: 10px 22px; border: 1px solid var(--border);
+    border-radius: 100px; background: var(--bg-card); color: var(--text);
+    cursor: pointer; transition: all 0.2s ease;
+}
+.clar-chip:hover { border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 
-/* ─── Listing Card ───────────────────────────────────────────── */
-.listing-card {
+/* ─── Compare Results ────────────────────────────────────────── */
+.compare-results { margin-top: 8px; }
+
+.cmp-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+}
+.cmp-header__left { display: flex; flex-direction: column; gap: 2px; }
+.cmp-variant { font-size: 15px; font-weight: 600; color: var(--text); }
+.cmp-header__sub { font-size: 13px; color: var(--text-light); }
+.cmp-change-btn {
+    font-family: var(--font-body); font-size: 13px; color: var(--accent);
+    background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0;
+}
+
+.cmp-table { display: flex; flex-direction: column; gap: 6px; }
+.cmp-empty { text-align: center; padding: 32px; color: var(--text-muted); font-size: 15px; }
+
+.cmp-row {
     display: flex; align-items: center; gap: 12px;
     background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-md); padding: 12px 14px;
-    cursor: pointer; transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
-    text-align: left; width: 100%;
-    font-family: var(--font-body); color: var(--text);
+    border-radius: var(--radius-md); padding: 14px 16px;
+    text-decoration: none; color: var(--text);
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
 }
-.listing-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); border-color: var(--accent); }
+.cmp-row:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); border-color: var(--border-hover); }
+.cmp-row--cheapest { border-color: var(--cheapest); background: var(--cheapest-bg); }
+.cmp-row--cheapest:hover { border-color: var(--cheapest); }
 
-.listing-card__img {
-    width: 56px; height: 56px; border-radius: var(--radius-sm);
-    object-fit: contain; background: var(--bg-subtle); flex-shrink: 0;
+/* Store badge in compare row */
+.cmp-store {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 3px 9px; border-radius: 100px; flex-shrink: 0; white-space: nowrap;
 }
-.listing-card__info { flex: 1; min-width: 0; }
-.listing-card__top { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
+.cmp-store--tesco { background: var(--tesco-light); color: #4d9fdf; }
+.cmp-store--sainsburys { background: var(--sainsburys-light); color: var(--sainsburys); }
+.cmp-store--aldi { background: var(--aldi-light); color: #6680b3; }
+.cmp-store--asda { background: var(--asda-light); color: var(--asda); }
+.cmp-store--morrisons { background: var(--morrisons-light); color: var(--morrisons); }
+.cmp-store--waitrose { background: var(--waitrose-light); color: var(--waitrose); }
+.cmp-store--ocado { background: var(--ocado-light); color: var(--ocado); }
+.cmp-store--coop { background: var(--coop-light); color: var(--coop); }
+.cmp-store--other { background: var(--bg-subtle); color: var(--text-muted); }
 
-/* Store badges — shared between listing and detail */
-.listing-card__store, .alt-card__store {
-    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
-    padding: 1px 6px; border-radius: 100px;
+.cmp-product { flex: 1; min-width: 0; }
+.cmp-product__name {
+    font-size: 14px; font-weight: 500; display: block;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.listing-card__store--tesco, .alt-card__store--tesco { background: var(--tesco-light); color: #4d9fdf; }
-.listing-card__store--sainsburys, .alt-card__store--sainsburys { background: var(--sainsburys-light); color: var(--sainsburys); }
-.listing-card__store--aldi, .alt-card__store--aldi { background: var(--aldi-light); color: #6680b3; }
-.listing-card__store--asda, .alt-card__store--asda { background: var(--asda-light); color: var(--asda); }
-.listing-card__store--morrisons, .alt-card__store--morrisons { background: var(--morrisons-light); color: var(--morrisons); }
-.listing-card__store--waitrose, .alt-card__store--waitrose { background: var(--waitrose-light); color: var(--waitrose); }
-.listing-card__store--ocado, .alt-card__store--ocado { background: var(--ocado-light); color: var(--ocado); }
-.listing-card__store--coop, .alt-card__store--coop { background: var(--coop-light); color: var(--coop); }
-.listing-card__store--other, .alt-card__store--other { background: var(--bg-subtle); color: var(--text-muted); }
+.cmp-product__weight { font-size: 11px; color: var(--text-light); }
 
-.listing-card__weight { font-size: 11px; color: var(--text-light); }
-.listing-card__name { font-size: 14px; font-weight: 500; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.listing-card__bottom { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; }
-.listing-card__price { font-size: 16px; font-weight: 700; }
-.listing-card__was { font-size: 12px; color: var(--text-light); text-decoration: line-through; }
-.listing-card__unit { font-size: 11px; color: var(--text-light); }
-.listing-card__arrow { width: 18px; height: 18px; color: var(--text-light); flex-shrink: 0; transition: color 0.2s; }
-.listing-card:hover .listing-card__arrow { color: var(--accent); }
-
-/* ─── Detail View ────────────────────────────────────────────── */
-.detail__back {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-family: var(--font-body); font-size: 14px; font-weight: 500;
-    color: var(--accent); background: none; border: none; cursor: pointer;
-    padding: 8px 0; margin-bottom: 16px;
+.cmp-product__meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 1px; }
+.cmp-sale {
+    font-size: 10px; font-weight: 600; color: #4caf82;
+    background: rgba(76, 175, 130, 0.15); padding: 1px 6px; border-radius: 4px;
 }
-.detail__back:hover { text-decoration: underline; }
-
-.detail__header { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
-.detail__img {
-    width: 100px; height: 100px; border-radius: var(--radius-md);
-    object-fit: contain; background: var(--bg-subtle); flex-shrink: 0;
-}
-.detail__meta { flex: 1; }
-.detail__name { font-size: 22px; font-weight: 700; line-height: 1.3; margin-bottom: 4px; }
-.detail__weight { font-size: 14px; color: var(--text-muted); display: block; margin-bottom: 2px; }
-.detail__usual { font-size: 13px; color: var(--text-light); }
-
-.detail__section-title {
-    font-size: 17px; font-weight: 700;
-    margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-light);
-    color: var(--text);
-}
-.detail__no-data { color: var(--text-light); font-size: 14px; padding: 16px 0; }
-
-/* ─── Store Prices (detail view) ─────────────────────────────── */
-.store-prices { display: flex; flex-direction: column; gap: 6px; }
-
-.sp {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-md); transition: border-color 0.2s;
-}
-.sp--cheapest { border-color: var(--cheapest); background: var(--cheapest-bg); }
-
-.sp__store { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-.sp__store--tesco { color: #4d9fdf; }
-.sp__store--sainsburys { color: var(--sainsburys); }
-.sp__store--aldi { color: #6680b3; }
-.sp__store--asda { color: var(--asda); }
-.sp__store--morrisons { color: var(--morrisons); }
-.sp__store--waitrose { color: var(--waitrose); }
-.sp__store--ocado { color: var(--ocado); }
-.sp__store--coop { color: var(--coop); }
-
-.sp__cheapest-tag {
-    font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
-    background: var(--cheapest); color: white; padding: 2px 6px; border-radius: 4px;
+.cmp-promo {
+    font-size: 10px; font-weight: 600; color: var(--accent);
+    background: var(--accent-light); padding: 1px 6px; border-radius: 4px;
 }
 
-.sp__pricing { text-align: right; }
-.sp__price { font-size: 18px; font-weight: 700; }
-.sp__price--struck { font-size: 13px; font-weight: 400; color: var(--text-light); text-decoration: line-through; }
-.sp__loyalty { display: flex; align-items: center; gap: 4px; justify-content: flex-end; margin-top: 2px; }
-.sp__loyalty-price { font-size: 18px; font-weight: 700; color: var(--accent); }
-.sp__loyalty-badge {
-    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+.cmp-prices { text-align: right; flex-shrink: 0; }
+.cmp-price { font-size: 18px; font-weight: 700; display: block; }
+.cmp-price--struck { font-size: 13px; font-weight: 400; color: var(--text-light); text-decoration: line-through; display: block; }
+.cmp-loyalty-price {
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+    font-size: 18px; font-weight: 700; color: var(--accent);
+}
+.cmp-loyalty-badge {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
     padding: 2px 5px; border-radius: 3px; color: white;
 }
-.sp__loyalty-badge--clubcard { background: var(--tesco); }
-.sp__loyalty-badge--nectar { background: var(--sainsburys); }
-.sp__unit { display: block; font-size: 11px; color: var(--text-light); margin-top: 1px; }
-.sp__promo { display: block; font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 2px; }
+.cmp-loyalty-badge--clubcard { background: var(--tesco); }
+.cmp-loyalty-badge--nectar   { background: var(--sainsburys); }
+.cmp-unit { font-size: 11px; color: var(--text-light); display: block; }
 
-/* ─── Alternatives (detail view) ─────────────────────────────── */
-.alt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
-
-.alt-card {
-    display: flex; gap: 10px; align-items: center;
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: var(--radius-md); padding: 10px;
-    cursor: pointer; text-align: left; font-family: var(--font-body);
-    color: var(--text); transition: box-shadow 0.2s, border-color 0.2s;
+.cmp-badge {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+    background: var(--cheapest); color: white; padding: 3px 7px; border-radius: 4px;
+    flex-shrink: 0;
 }
-.alt-card:hover { box-shadow: var(--shadow-sm); border-color: var(--accent); }
-
-.alt-card__img {
-    width: 44px; height: 44px; border-radius: var(--radius-sm);
-    object-fit: contain; background: var(--bg-subtle); flex-shrink: 0;
-}
-.alt-card__info { flex: 1; min-width: 0; }
-.alt-card__name { font-size: 12px; font-weight: 500; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.alt-card__price { font-size: 14px; font-weight: 700; }
-.alt-card__unit { font-size: 10px; color: var(--text-light); }
-
-/* ─── Trolley Link ───────────────────────────────────────────── */
-.detail__trolley-link {
-    display: inline-block; margin-top: 20px; font-size: 13px;
-    color: var(--accent); text-decoration: none; padding: 8px 0;
-}
-.detail__trolley-link:hover { text-decoration: underline; }
+.cmp-arrow { font-size: 18px; color: var(--text-light); flex-shrink: 0; transition: color 0.2s; }
+.cmp-row:hover .cmp-arrow { color: var(--accent); }
 
 /* ─── States ─────────────────────────────────────────────────── */
 .empty-state, .error-state { text-align: center; padding: 64px 20px; }
@@ -456,7 +414,15 @@ body {
 .bi-store__name--ocado { color: var(--ocado); }
 .bi-store__name--coop { color: var(--coop); }
 
-.bi-store__price { font-weight: 700; min-width: 55px; }
+.bi-store__price { font-weight: 700; min-width: 55px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.bi-store__price--struck { font-weight: 400; color: var(--text-light); text-decoration: line-through; font-size: 11px; }
+.bi-loyalty-badge {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 1px 4px; border-radius: 3px; color: white;
+}
+.bi-loyalty-badge--clubcard { background: var(--tesco); }
+.bi-loyalty-badge--nectar   { background: var(--sainsburys); }
+.basket-loyalty-note { font-size: 12px; color: var(--text-light); margin-top: 12px; font-style: italic; }
 .bi-store__product { color: var(--text-muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bi-store__weight { color: var(--text-light); font-size: 11px; }
 .bi-store__change {
@@ -510,10 +476,10 @@ body {
     .app { padding: 0 12px; }
     .logo__text { font-size: 22px; }
     .search-box__btn { padding: 12px 18px; font-size: 14px; }
-    .detail__img { width: 72px; height: 72px; }
-    .detail__name { font-size: 18px; }
-    .alt-grid { grid-template-columns: 1fr; }
     .search-box__hints { display: none; }
+    .cmp-row { padding: 12px; gap: 8px; }
+    .cmp-product__name { font-size: 13px; }
+    .cmp-price { font-size: 16px; }
     .store-selector { gap: 4px; }
     .store-check { font-size: 11px; padding: 3px 8px; }
     .bi-store__name { min-width: 70px; }
