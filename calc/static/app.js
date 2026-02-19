@@ -126,7 +126,11 @@ async function doSearch(variantOverride) {
 
     if (!data.products || data.products.length === 0) { showSearchView("empty"); return; }
 
+    console.log('[debug] products from API:', data.products.length);
+    console.log('[debug] sample:', data.products.slice(0,5).map(p => ({ name: p.name, store: p.store, slug: p.slug, price: p.price })));
+
     const byStore = buildByStore(data.products, query);
+    console.log('[debug] byStore keys:', Object.keys(byStore));
     currentCompareByStore = byStore;
     renderCompareTable();
     showSearchView("compare");
