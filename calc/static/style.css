@@ -76,6 +76,17 @@ body {
 .logo__accent { color: var(--accent); }
 .header__tagline { margin-top: 6px; font-size: 14px; color: var(--text-muted); letter-spacing: 0.01em; }
 
+/* ─── WIP Banner ─────────────────────────────────────────────── */
+.wip-banner {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255, 126, 71, 0.1); border: 1px solid rgba(255, 126, 71, 0.35);
+    border-radius: var(--radius-md); padding: 12px 16px;
+    font-size: 14px; color: var(--text-muted); margin-bottom: 20px;
+    line-height: 1.5;
+}
+.wip-banner__icon { font-size: 18px; flex-shrink: 0; }
+.wip-banner strong { color: var(--accent); }
+
 /* ─── Search ─────────────────────────────────────────────────── */
 .search-section { padding: 8px 0 32px; }
 .search-box {
@@ -102,13 +113,33 @@ body {
 .search-box__btn:active { transform: scale(0.97); }
 
 .search-box__hints { display: flex; align-items: center; gap: 6px; padding: 8px 16px 10px; flex-wrap: wrap; }
+.search-box__stores {
+    display: flex; align-items: center; gap: 6px; padding: 10px 16px 10px; flex-wrap: wrap;
+    border-top: 1px solid var(--border-light);
+}
 .hint-label { font-size: 12px; color: var(--text-light); font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; }
+.hint-text { font-size: 13px; color: var(--text-light); }
+.search-box__hints .hint-label,
+.search-box__hints .hint-text { color: #555; }
+.hint-text em { font-style: normal; }
 .hint-chip {
     background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 100px;
     padding: 4px 12px; font-family: var(--font-body); font-size: 13px;
     color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
 }
 .hint-chip:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+
+.search-box__brand {
+    display: flex; align-items: center; gap: 6px; padding: 6px 16px 10px; flex-wrap: wrap;
+    border-top: 1px solid var(--border-light);
+}
+.brand-chip {
+    background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 100px;
+    padding: 4px 12px; font-family: var(--font-body); font-size: 13px;
+    color: var(--text-muted); cursor: pointer; transition: all 0.2s ease;
+}
+.brand-chip:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+.brand-chip--active { background: var(--accent-light); color: var(--accent); border-color: var(--accent); font-weight: 600; }
 
 /* ─── Loading ────────────────────────────────────────────────── */
 .loading { text-align: center; padding: 48px 0; }
@@ -230,6 +261,28 @@ body {
 }
 .cmp-arrow { font-size: 18px; color: var(--text-light); flex-shrink: 0; transition: color 0.2s; }
 .cmp-row:hover .cmp-arrow { color: var(--accent); }
+
+/* ─── Other Options ──────────────────────────────────────────── */
+.other-options { margin-top: 16px; }
+.oo-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-light); margin-bottom: 6px; padding-left: 2px;
+}
+.oo-list { display: flex; flex-direction: column; gap: 4px; }
+.oo-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm); padding: 9px 12px;
+    text-decoration: none; color: var(--text-muted);
+    transition: border-color 0.2s, color 0.2s;
+    font-size: 13px;
+}
+.oo-row:hover { border-color: var(--border-hover); color: var(--text); }
+.oo-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.oo-weight { color: var(--text-light); font-size: 11px; margin-left: 4px; }
+.oo-price { flex-shrink: 0; font-weight: 600; }
+.oo-unit { font-weight: 400; font-size: 11px; color: var(--text-light); margin-left: 3px; }
+.oo-arrow { color: var(--text-light); flex-shrink: 0; font-size: 14px; }
 
 /* ─── States ─────────────────────────────────────────────────── */
 .empty-state, .error-state { text-align: center; padding: 64px 20px; }

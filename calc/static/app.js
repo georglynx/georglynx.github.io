@@ -2,9 +2,9 @@
  * Cozzie Livs Calc — Frontend
  *
  * Two modes:
- *   SEARCH: Type a product → optional clarification → per-store compare view
- *           (loyalty prices enriched in background via 2 detail calls)
- *   BASKET: Ingredient list → staggered search → loyalty second pass → totals
+ *   SEARCH: Type a product → per-store compare view
+ *           (listing → first product detail + supermarket alternatives → merge)
+ *   BASKET: Ingredient list → staggered search → totals per store
  */
 
 // ─── DOM ─────────────────────────────────────────────────────────
@@ -13,7 +13,6 @@ const $ = (sel) => document.getElementById(sel);
 const searchInput          = $("searchInput");
 const searchBtn            = $("searchBtn");
 const loading              = $("loading");
-const clarificationSection = $("clarificationSection");
 const compareSection       = $("compareSection");
 const emptyState           = $("emptyState");
 const errorState           = $("errorState");
@@ -30,47 +29,19 @@ const basketError          = $("basketError");
 const basketErrorText      = $("basketErrorText");
 
 // ─── State ───────────────────────────────────────────────────────
-let currentMode         = "search";
-let basketSearching     = false;
-let pendingVariant      = "";
-let currentCompareByStore = {};   // live reference for loyalty enrichment
-const cache = { searches: {}, products: {} };
+let currentMode           = "search";
+let basketSearching       = false;
+let currentCompareByStore = {};
+const cache = { searches: {} };
 
 let basketSelections = {};
-let basketData       = {};
 
 // ─── Known stores ────────────────────────────────────────────────
 const STORE_NAMES = [
   "Tesco", "Sainsbury's", "Aldi", "Asda", "Morrisons",
   "Waitrose", "Ocado", "Co-op", "Iceland", "M&S",
 ];
-const LOYALTY_STORES = ["Tesco", "Sainsbury's"]; // only these have schemes
-
-// ─── Clarification prompts ────────────────────────────────────────
-const CLARIFICATIONS = {
-  "olive oil":  ["Extra Virgin", "Virgin", "Light", "Any"],
-  "eggs":       ["Free Range", "Organic", "Standard", "Any"],
-  "milk":       ["Full Fat", "Semi-Skimmed", "Skimmed", "Any"],
-  "butter":     ["Salted", "Unsalted", "Any"],
-  "bread":      ["White", "Wholemeal", "Sourdough", "Any"],
-  "chicken":    ["Breast", "Thighs", "Whole", "Mince", "Any"],
-  "mince":      ["Beef", "Pork", "Turkey", "Lamb", "Any"],
-  "beef":       ["Mince", "Steak", "Diced", "Any"],
-  "cheese":     ["Cheddar", "Mozzarella", "Parmesan", "Brie", "Any"],
-  "pasta":      ["Spaghetti", "Penne", "Fusilli", "Rigatoni", "Any"],
-  "rice":       ["Basmati", "Long Grain", "Brown", "Any"],
-  "yoghurt":    ["Natural", "Greek", "Flavoured", "Any"],
-  "yogurt":     ["Natural", "Greek", "Flavoured", "Any"],
-  "coffee":     ["Ground", "Instant", "Beans", "Any"],
-  "tea":        ["English Breakfast", "Green", "Herbal", "Any"],
-  "juice":      ["Orange", "Apple", "Cranberry", "Any"],
-  "oil":        ["Olive", "Vegetable", "Sunflower", "Coconut", "Any"],
-};
-
-function getClarification(query) {
-  const q = query.toLowerCase().trim();
-  return CLARIFICATIONS[q] ? { key: q, variants: CLARIFICATIONS[q] } : null;
-}
+const LOYALTY_STORES = ["Tesco", "Sainsbury's"];
 
 // ─── Mode Toggle ─────────────────────────────────────────────────
 function switchMode(mode) {
@@ -80,6 +51,20 @@ function switchMode(mode) {
   document.querySelectorAll(".mode-toggle__btn").forEach((btn) => {
     btn.classList.toggle("mode-toggle__btn--active", btn.dataset.mode === mode);
   });
+}
+
+function getSelectedSearchStores() {
+  return new Set(
+    [...document.querySelectorAll(".search-box__stores input:checked")].map(cb => cb.value)
+  );
+}
+
+function onStoreFilterChange() {
+  // Re-render immediately from cached data — no new network request needed
+  if (!compareSection.hidden && Object.keys(currentCompareByStore).length > 0) {
+    renderCompareTable(currentIsHomeBrand);
+    renderOtherOptions();
+  }
 }
 
 // ─── Events ──────────────────────────────────────────────────────
@@ -94,111 +79,70 @@ document.querySelectorAll(".hint-chip").forEach((chip) => {
 // SEARCH MODE
 // ═════════════════════════════════════════════════════════════════
 
-async function doSearch(variantOverride) {
+async function doSearch() {
   const query = searchInput.value.trim();
   if (!query) return;
 
-  if (!variantOverride) {
-    const clar = getClarification(query);
-    if (clar) { showClarification(query, clar.variants); return; }
-  }
-
-  const variant = variantOverride === "Any" ? "" : (variantOverride || "");
-  const effectiveQuery = variant ? `${variant} ${query}` : query;
-  pendingVariant = variant;
-
   showSearchView("loading");
 
-  if (cache.searches[effectiveQuery]) {
-    const byStore = buildByStore(cache.searches[effectiveQuery].products, query);
-    currentCompareByStore = byStore;
+  const cacheKey = `compare:${query}`;
+  if (cache.searches[cacheKey]) {
+    currentCompareByStore = toByStore(cache.searches[cacheKey].storePrices);
     renderCompareTable();
     showSearchView("compare");
-    enrichCompareWithLoyalty(); // background
     return;
   }
 
   try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(effectiveQuery)}`);
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&compare=1`);
     if (!res.ok) throw new Error(`Server error: ${res.status}`);
     const data = await res.json();
-    cache.searches[effectiveQuery] = data;
+    cache.searches[cacheKey] = data;
 
-    if (!data.products || data.products.length === 0) { showSearchView("empty"); return; }
+    if (!data.storePrices || data.storePrices.length === 0) { showSearchView("empty"); return; }
 
-    console.log('[debug] products from API:', data.products.length);
-    console.log('[debug] sample:', data.products.slice(0,5).map(p => ({ name: p.name, store: p.store, slug: p.slug, price: p.price })));
-
-    const byStore = buildByStore(data.products, query);
-    console.log('[debug] byStore keys:', Object.keys(byStore));
-    currentCompareByStore = byStore;
+    currentCompareByStore = toByStore(data.storePrices);
     renderCompareTable();
     showSearchView("compare");
-    enrichCompareWithLoyalty(); // background — updates table in place
   } catch (err) {
     showSearchView("error", err.message);
   }
 }
 
-function showClarification(query, variants) {
-  showSearchView("clarification");
-  $("clarLabel").textContent = `What kind of ${query}?`;
-  $("clarChips").innerHTML = variants.map((v) =>
-    `<button class="clar-chip" onclick="doSearch('${esc(v)}')">${esc(v)}</button>`
-  ).join("");
-}
-
-/** Build the store→product map from listing products */
-function buildByStore(products, query) {
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
-  const byStore = {};
-  for (const p of products) {
-    const store = p.store || detectStore(p.name, p.slug);
-    if (!store || p.price <= 0) continue;
-    if (words.length > 0) {
-      const nl = (p.name || "").toLowerCase();
-      if (!words.every((w) => nl.includes(w))) continue;
-    }
-    const unitCost = p.pricePerUnit || p.price;
-    if (!byStore[store] || unitCost < (byStore[store].pricePerUnit || byStore[store].price)) {
-      byStore[store] = { ...p, store };
-    }
-  }
-  return byStore;
+function toByStore(storePrices) {
+  const m = {};
+  for (const sp of (storePrices || [])) m[sp.store] = sp;
+  return m;
 }
 
 /** Render (or re-render) the compare table from currentCompareByStore */
 function renderCompareTable() {
-  const byStore = currentCompareByStore;
+  const selectedStores = getSelectedSearchStores();
+  const byStore = selectedStores.size > 0
+    ? Object.fromEntries(Object.entries(currentCompareByStore).filter(([s]) => selectedStores.has(s)))
+    : currentCompareByStore;
 
-  // Sort by effective best price (loyalty if enriched, else listing price)
   const sorted = Object.entries(byStore).sort((a, b) => {
     const aP = effectiveUnitCost(a[1]);
     const bP = effectiveUnitCost(b[1]);
     return aP - bP;
   });
 
-  const variantNote = pendingVariant
-    ? `<span class="cmp-variant">Showing: ${esc(pendingVariant)} ${esc(searchInput.value.trim())}</span>` : "";
-  const changeLink = pendingVariant
-    ? `<button class="cmp-change-btn" onclick="showClarification(searchInput.value.trim(), getClarification(searchInput.value.trim())?.variants || [])">Change variant</button>` : "";
+  const subLabel = `${sorted.length} store${sorted.length !== 1 ? "s" : ""} found &mdash; sorted cheapest first`;
 
   let html = `
     <div class="cmp-header">
-      <div class="cmp-header__left">
-        ${variantNote}
-        <p class="cmp-header__sub">${sorted.length} store${sorted.length !== 1 ? "s" : ""} found &mdash; sorted cheapest first</p>
-      </div>
-      ${changeLink}
+      <p class="cmp-header__sub">${subLabel}</p>
     </div>
     <div class="cmp-table">
   `;
 
   if (sorted.length === 0) {
-    html += `<p class="cmp-empty">No supermarket own-brand products found. Try a more specific search (e.g. "cheddar cheese" instead of "cheese"), or check <a href="https://www.trolley.co.uk/search/?q=${encodeURIComponent(searchInput.value.trim())}" target="_blank" rel="noopener">Trolley.co.uk</a> directly.</p>`;
+    html += `<p class="cmp-empty">No results found. Try a more specific search, or check <a href="https://www.trolley.co.uk/search/?q=${encodeURIComponent(searchInput.value.trim())}" target="_blank" rel="noopener">Trolley.co.uk</a> directly.</p>`;
   } else {
+    const minCost = effectiveUnitCost(sorted[0][1]);
     sorted.forEach(([store, p], i) => {
-      const isCheapest = i === 0;
+      const isCheapest = effectiveUnitCost(p) <= minCost + 0.001;
       const hasLoyalty = p.loyaltyPrice && p.loyaltyPrice < p.price;
 
       let priceHtml = `<span class="cmp-price">£${p.price.toFixed(2)}</span>`;
@@ -226,7 +170,7 @@ function renderCompareTable() {
           </span>
           <span class="cmp-prices">
             ${priceHtml}
-            ${p.pricePerUnit ? `<span class="cmp-unit">£${p.pricePerUnit.toFixed(2)} ${esc(p.unit || "")}</span>` : ""}
+            ${p.per100g ? `<span class="cmp-unit">£${p.per100g.toFixed(2)}/100g</span>` : (p.pricePerUnit ? `<span class="cmp-unit">£${p.pricePerUnit.toFixed(2)} ${esc(p.unit || "")}</span>` : "")}
           </span>
           ${isCheapest ? '<span class="cmp-badge">CHEAPEST</span>' : '<span class="cmp-arrow">→</span>'}
         </a>
@@ -238,34 +182,15 @@ function renderCompareTable() {
   compareSection.innerHTML = html;
 }
 
-/** Fetch loyalty prices for Tesco + Sainsbury's in parallel, then re-render */
-async function enrichCompareWithLoyalty() {
-  const byStore = currentCompareByStore; // capture ref
-  const toFetch = LOYALTY_STORES.filter(s => byStore[s]);
-  if (toFetch.length === 0) return;
-
-  await Promise.all(toFetch.map(async (store) => {
-    const p = byStore[store];
-    const loyalty = await fetchLoyaltyInfo(p);
-    if (loyalty && byStore === currentCompareByStore) {
-      byStore[store] = { ...byStore[store], ...loyalty };
-    }
-  }));
-
-  if (byStore === currentCompareByStore) renderCompareTable();
-}
-
 function showSearchView(view, errorMsg) {
   loading.hidden = true;
-  clarificationSection.hidden = true;
   compareSection.hidden = true;
   emptyState.hidden = true;
   errorState.hidden = true;
   switch (view) {
-    case "loading":       loading.hidden = false; break;
-    case "clarification": clarificationSection.hidden = false; break;
-    case "compare":       compareSection.hidden = false; break;
-    case "empty":         emptyState.hidden = false; break;
+    case "loading": loading.hidden = false; break;
+    case "compare": compareSection.hidden = false; break;
+    case "empty":   emptyState.hidden = false; break;
     case "error":
       errorState.hidden = false;
       errorText.textContent = errorMsg || "Something went wrong.";
@@ -306,7 +231,6 @@ async function doBasketSearch() {
 
   basketSearching = true;
   basketSelections = {};
-  basketData = {};
 
   $("basketInput").hidden = true;
   basketProgress.hidden = false;
@@ -321,7 +245,6 @@ async function doBasketSearch() {
   `).join("");
 
   try {
-    // ── Phase 1: search each ingredient ──────────────────────────
     for (let i = 0; i < ingredients.length; i++) {
       const ing = ingredients[i];
       const bpItem = $(`bp-${i}`);
@@ -333,49 +256,28 @@ async function doBasketSearch() {
       basketProgressMsg.textContent = FUN_MESSAGES[i % FUN_MESSAGES.length].replace("{0}", ing);
 
       let data;
-      if (cache.searches[ing]) {
-        data = cache.searches[ing];
+      const basketCacheKey = `branded:${ing}`;
+      if (cache.searches[basketCacheKey]) {
+        data = cache.searches[basketCacheKey];
       } else {
         if (i > 0) await delay(2500);
-        const res = await fetch(`/api/search?q=${encodeURIComponent(ing)}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(ing)}&compare=1`);
         if (!res.ok) throw new Error(`Failed to search for "${ing}"`);
         data = await res.json();
-        cache.searches[ing] = data;
+        cache.searches[basketCacheKey] = data;
       }
 
-      const storeGroups = scoreAndFilter(data.products || [], ing, stores);
-      basketData[ing] = storeGroups;
       basketSelections[ing] = {};
-      for (const [store, prods] of Object.entries(storeGroups)) {
-        if (prods.length > 0) basketSelections[ing][store] = { ...prods[0] };
+      for (const sp of (data.storePrices || [])) {
+        if (stores.includes(sp.store)) {
+          basketSelections[ing][sp.store] = sp;
+        }
       }
 
       if (bpItem) {
-        const hasResults = Object.keys(storeGroups).length > 0;
+        const hasResults = Object.keys(basketSelections[ing]).length > 0;
         bpItem.querySelector(".bp-item__icon").innerHTML = hasResults ? "&#x2705;" : "&#x274C;";
         bpItem.querySelector(".bp-item__icon").className = `bp-item__icon bp-item__icon--${hasResults ? "done" : "fail"}`;
-      }
-    }
-
-    // ── Phase 2: enrich Tesco + Sainsbury's with loyalty prices ──
-    const loyaltyStoresSelected = LOYALTY_STORES.filter(s => stores.includes(s));
-    if (loyaltyStoresSelected.length > 0) {
-      basketProgressMsg.textContent = "Checking Clubcard & Nectar prices...";
-      basketProgress.hidden = false;
-
-      for (let i = 0; i < ingredients.length; i++) {
-        const ing = ingredients[i];
-        if (i > 0) await delay(1000);
-
-        // Fetch both loyalty stores in parallel for this ingredient
-        await Promise.all(loyaltyStoresSelected.map(async (store) => {
-          const product = basketSelections[ing]?.[store];
-          if (!product) return;
-          const loyalty = await fetchLoyaltyInfo(product);
-          if (loyalty) {
-            basketSelections[ing][store] = { ...basketSelections[ing][store], ...loyalty };
-          }
-        }));
       }
     }
 
@@ -392,29 +294,6 @@ async function doBasketSearch() {
   }
 }
 
-function scoreAndFilter(products, query, selectedStores) {
-  const words = query.toLowerCase().split(/\s+/).filter((w) => w.length > 1);
-
-  const filtered = products.filter((p) => {
-    const store = p.store || detectStore(p.name, p.slug);
-    if (!store || !selectedStores.includes(store)) return false;
-    if (p.price <= 0) return false;
-    const nl = (p.name || "").toLowerCase();
-    return words.every((w) => nl.includes(w));
-  });
-
-  filtered.forEach((p) => { if (!p.store) p.store = detectStore(p.name, p.slug) || ""; });
-
-  filtered.sort((a, b) => (a.pricePerUnit || a.price) - (b.pricePerUnit || b.price));
-
-  const groups = {};
-  for (const p of filtered) {
-    if (!groups[p.store]) groups[p.store] = [];
-    if (groups[p.store].length < 3) groups[p.store].push(p);
-  }
-  return groups;
-}
-
 function renderBasketResults(ingredients, stores) {
   const storeTotals  = {};
   const storeMissing = {};
@@ -424,7 +303,6 @@ function renderBasketResults(ingredients, stores) {
     const selections = basketSelections[ing] || {};
     for (const store of stores) {
       if (selections[store]) {
-        // Use loyalty price if available (the real cost)
         const p = selections[store];
         storeTotals[store] += (p.loyaltyPrice && p.loyaltyPrice < p.price) ? p.loyaltyPrice : p.price;
       } else {
@@ -467,11 +345,10 @@ function renderBasketResults(ingredients, stores) {
   // Per-ingredient breakdown
   let ingHtml = '<h3 class="basket-ing__title">Per ingredient</h3>';
   for (const ing of ingredients) {
-    const groups    = basketData[ing] || {};
     const selections = basketSelections[ing] || {};
-    const hasAny    = Object.keys(selections).length > 0;
+    const hasAny = Object.keys(selections).length > 0;
 
-    ingHtml += `<div class="bi-row" id="bi-${esc(ing).replace(/\s+/g, "-")}">`;
+    ingHtml += `<div class="bi-row">`;
     ingHtml += `<div class="bi-row__header">${esc(ing)}</div>`;
 
     if (!hasAny) {
@@ -483,8 +360,7 @@ function renderBasketResults(ingredients, stores) {
         .sort((a, b) => bestPrice(a[1]) - bestPrice(b[1]));
 
       storesWithProduct.forEach(([store, product], idx) => {
-        const isCheap   = idx === 0;
-        const hasAlts   = (groups[store] || []).length > 1;
+        const isCheap    = idx === 0;
         const hasLoyalty = product.loyaltyPrice && product.loyaltyPrice < product.price;
 
         let priceHtml = `£${product.price.toFixed(2)}`;
@@ -500,7 +376,6 @@ function renderBasketResults(ingredients, stores) {
             <span class="bi-store__price">${priceHtml}${loyaltyHtml ? " " + loyaltyHtml : ""}</span>
             <span class="bi-store__product">${esc(product.name)}</span>
             ${product.weight ? `<span class="bi-store__weight">${esc(product.weight)}</span>` : ""}
-            ${hasAlts ? `<button class="bi-store__change" onclick="showAlternatives('${esc(ing)}', '${esc(store)}')">change</button>` : ""}
           </div>
         `;
       });
@@ -519,54 +394,15 @@ function renderBasketResults(ingredients, stores) {
       ingHtml += `</div>`;
     }
 
-    ingHtml += `<div class="bi-alts" id="alts-${esc(ing).replace(/\s+/g, "-")}" hidden></div></div>`;
+    ingHtml += `</div>`;
   }
 
   ingHtml += `<p class="basket-loyalty-note">* Tesco &amp; Sainsbury's totals include Clubcard/Nectar prices where available.</p>`;
   basketIngredients.innerHTML = ingHtml;
 }
 
-function showAlternatives(ingredient, store) {
-  const altId = `alts-${ingredient.replace(/\s+/g, "-")}`;
-  const altContainer = $(altId);
-  if (!altContainer) return;
-  if (!altContainer.hidden) { altContainer.hidden = true; altContainer.innerHTML = ""; return; }
-
-  const alternatives = (basketData[ingredient] || {})[store] || [];
-  const currentSelection = (basketSelections[ingredient] || {})[store];
-
-  let html = `<div class="bi-alts__label">Alternatives at ${esc(store)}:</div><div class="bi-alts__list">`;
-  alternatives.forEach((p) => {
-    const isSelected = currentSelection && currentSelection.code === p.code;
-    html += `
-      <button class="bi-alt-card ${isSelected ? "bi-alt-card--selected" : ""}"
-              onclick="selectAlternative('${esc(ingredient)}', '${esc(store)}', '${esc(p.code)}')">
-        <img class="bi-alt-card__img" src="${esc(p.imageUrl)}" alt="" loading="lazy" onerror="this.style.display='none'">
-        <div class="bi-alt-card__info">
-          <span class="bi-alt-card__name">${esc(p.name)}</span>
-          <span class="bi-alt-card__price">£${p.price.toFixed(2)}</span>
-          ${p.weight ? `<span class="bi-alt-card__weight">${esc(p.weight)}</span>` : ""}
-          ${p.pricePerUnit ? `<span class="bi-alt-card__unit">£${p.pricePerUnit.toFixed(2)} ${esc(p.unit || "")}</span>` : ""}
-        </div>
-        ${isSelected ? '<span class="bi-alt-card__check">&#x2713;</span>' : ""}
-      </button>
-    `;
-  });
-  html += `</div>`;
-  altContainer.innerHTML = html;
-  altContainer.hidden = false;
-}
-
-function selectAlternative(ingredient, store, code) {
-  const product = ((basketData[ingredient] || {})[store] || []).find((p) => p.code === code);
-  if (!product) return;
-  basketSelections[ingredient][store] = { ...product };
-  renderBasketResults(Object.keys(basketData), getSelectedStores());
-}
-
 function resetBasket() {
   basketSelections = {};
-  basketData = {};
   basketResults.hidden = true;
   basketProgress.hidden = true;
   basketError.hidden = true;
@@ -575,88 +411,21 @@ function resetBasket() {
 
 
 // ═════════════════════════════════════════════════════════════════
-// LOYALTY — shared helpers
+// UTILS
 // ═════════════════════════════════════════════════════════════════
-
-/**
- * Fetch loyalty + promotion + sale info for a product.
- * Uses the product detail endpoint and returns enrichment fields.
- * Results cached in cache.products.
- */
-async function fetchLoyaltyInfo(product) {
-  if (!product?.code) return null;
-
-  let detail = cache.products[product.code];
-  if (!detail) {
-    try {
-      const res = await fetch(
-        `/api/search?product=${encodeURIComponent(product.code)}&slug=${encodeURIComponent(product.slug || "")}`
-      );
-      if (!res.ok) return null;
-      detail = await res.json();
-      cache.products[product.code] = detail;
-    } catch {
-      return null;
-    }
-  }
-
-  // Find the matching store entry in storePrices
-  const storeEntry = (detail.storePrices || []).find(
-    (sp) => sp.store.toLowerCase() === (product.store || "").toLowerCase()
-  );
-  if (!storeEntry) return null;
-
-  const usualPrice = detail.priceHistory?.usual;
-  const isOnSale   = usualPrice && storeEntry.price < usualPrice;
-
-  return {
-    loyaltyPrice:  storeEntry.loyaltyPrice  || null,
-    loyaltyScheme: storeEntry.loyaltyScheme || null,
-    promotion:     storeEntry.promotion     || null,
-    onSale:        isOnSale || false,
-    usualPrice:    usualPrice || null,
-  };
-}
 
 /** The price to use for ranking — loyalty if cheaper, else listing price */
 function bestPrice(p) {
   return (p.loyaltyPrice && p.loyaltyPrice < p.price) ? p.loyaltyPrice : p.price;
 }
 
-/** Effective unit cost for compare table sorting */
+/** Effective unit cost for compare table sorting — prefers per-100g for fair size comparison */
 function effectiveUnitCost(p) {
+  // per100g is already loyalty-adjusted by the server — use directly
+  if (p.per100g) return p.per100g;
   const bp = bestPrice(p);
-  if (p.pricePerUnit && p.price > 0) {
-    // Scale per-unit price by loyalty ratio
-    return p.pricePerUnit * (bp / p.price);
-  }
+  if (p.pricePerUnit && p.price > 0) return p.pricePerUnit * (bp / p.price);
   return bp;
-}
-
-
-// ═════════════════════════════════════════════════════════════════
-// UTILS
-// ═════════════════════════════════════════════════════════════════
-
-function detectStore(name, slug) {
-  if (name) {
-    for (const s of STORE_NAMES) {
-      if (name.startsWith(s) || name.toLowerCase().startsWith(s.toLowerCase())) return s;
-    }
-  }
-  if (slug) {
-    const sl = slug.toLowerCase();
-    if (sl.startsWith("tesco"))      return "Tesco";
-    if (sl.startsWith("sainsburys")) return "Sainsbury's";
-    if (sl.startsWith("aldi"))       return "Aldi";
-    if (sl.startsWith("asda"))       return "Asda";
-    if (sl.startsWith("morrisons"))  return "Morrisons";
-    if (sl.startsWith("waitrose"))   return "Waitrose";
-    if (sl.startsWith("ocado"))      return "Ocado";
-    if (sl.startsWith("coop") || sl.startsWith("co-op")) return "Co-op";
-    if (sl.startsWith("iceland"))    return "Iceland";
-  }
-  return "";
 }
 
 function esc(str) {
