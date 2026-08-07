@@ -8,11 +8,11 @@
     },
     {
       "player": "Parker",
-      "change": -1
+      "change": 2
     },
     {
       "player": "Syed",
-      "change": 1
+      "change": -1
     }
   ]
 }
