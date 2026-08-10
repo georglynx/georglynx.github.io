@@ -1,0 +1,22 @@
+{
+  "date": "2026-08-10",
+  "game": "Tetrio",
+  "changes": [
+    {
+      "player": "George",
+      "change": -1
+    },
+    {
+      "player": "Syed",
+      "change": -1
+    },
+    {
+      "player": "Jan",
+      "change": -1
+    },
+    {
+      "player": "Parker",
+      "change": 3
+    }
+  ]
+}
