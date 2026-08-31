@@ -1,5 +1,6 @@
 {
   "date": "2026-08-06",
+  "gameNumber": 2,
   "game": "Tetrio",
   "changes": [
     {
@@ -14,6 +15,5 @@
       "player": "Parker",
       "change": -1
     }
-  ],
-  "notes": "Game 2"
+  ]
 }

@@ -1,0 +1,31 @@
+{
+  "date": "2025-10-18",
+  "gameNumber": 1,
+  "game": "Minigolf",
+  "changes": [
+    {
+      "player": "Syed",
+      "change": 2
+    },
+    {
+      "player": "George",
+      "change": 2
+    },
+    {
+      "player": "Jan",
+      "change": 2
+    },
+    {
+      "player": "Parker",
+      "change": 4
+    },
+    {
+      "player": "Jaz",
+      "change": 1
+    },
+    {
+      "player": "Dyl",
+      "change": 1
+    }
+  ]
+}

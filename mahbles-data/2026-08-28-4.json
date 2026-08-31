@@ -1,7 +1,7 @@
 {
-  "game": "Tetrio",
   "date": "2026-08-28",
-  "notes": "Game 4",
+  "gameNumber": 4,
+  "game": "Tetrio",
   "changes": [
     {
       "player": "Parker",

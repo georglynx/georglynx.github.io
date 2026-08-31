@@ -1,19 +1,19 @@
 {
   "date": "2026-08-06",
+  "gameNumber": 1,
   "game": "Tetrio",
   "changes": [
     {
       "player": "George",
-      "change": -1
+      "change": 0
     },
     {
       "player": "Parker",
-      "change": 2
+      "change": 0
     },
     {
       "player": "Syed",
-      "change": -1
+      "change": 1
     }
-  ],
-  "notes": "Game 3"
+  ]
 }

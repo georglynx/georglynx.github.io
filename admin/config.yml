@@ -15,11 +15,11 @@ collections:
     label_singular: "Mahbles Game"
     folder: "mahbles-data"
     create: true
-    slug: "{{year}}-{{month}}-{{day}}"
+    slug: "{{fields.date}}-{{fields.gameNumber}}"
     extension: json
     format: json
     identifier_field: date
-    summary: "{{date}} - {{game}}"
+    summary: "{{date}} #{{gameNumber}} - {{game}}"
     fields:
       - label: "Date"
         name: "date"
@@ -28,6 +28,15 @@ collections:
         date_format: "YYYY-MM-DD"
         time_format: false
         
+      - label: "Game Number"
+        name: "gameNumber"
+        widget: "number"
+        value_type: "int"
+        default: 1
+        min: 1
+        required: true
+        hint: "Which game of the night this was - 1 for the first, 2 for the second, etc. Leave as 1 unless you played more than one game that night."
+
       - label: "Game Played"
         name: "game"
         widget: "string"

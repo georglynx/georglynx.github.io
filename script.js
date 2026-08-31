@@ -11,6 +11,7 @@ const COLOR_POOL = [
 ];
 let playerColors = {};
 let gameColors = {};
+let gamesPerDate = {};
 
 // ============================================
 // DATA LOADING
@@ -80,14 +81,28 @@ function normalizeData() {
     allGames = allGames.map(game => ({
         ...game,
         game: normalizeGameName(game.game),
+        gameNumber: Number(game.gameNumber) || 1,
         changes: game.changes.map(change => ({
             ...change,
             player: normalizePlayerName(change.player)
         }))
     }));
     
-    // Sort by date
-    allGames.sort((a, b) => new Date(a.date) - new Date(b.date));
+    // Sort chronologically, then by game number within a night
+    allGames.sort((a, b) =>
+        new Date(a.date) - new Date(b.date) || a.gameNumber - b.gameNumber
+    );
+
+    // Count games per date so multi-game nights can be labelled
+    gamesPerDate = {};
+    allGames.forEach(game => {
+        gamesPerDate[game.date] = (gamesPerDate[game.date] || 0) + 1;
+    });
+}
+
+// True when a date had more than one game, so the game number is worth showing
+function isMultiGameDate(date) {
+    return (gamesPerDate[date] || 0) > 1;
 }
 
 function normalizePlayerName(name) {
@@ -99,10 +114,11 @@ function normalizeGameName(name) {
 }
 
 function validateData() {
-    const dates = allGames.map(g => g.date);
-    const duplicates = dates.filter((date, index) => dates.indexOf(date) !== index);
+    // Several games per date is normal; the same date AND game number is a clash
+    const keys = allGames.map(g => `${g.date} #${g.gameNumber}`);
+    const duplicates = keys.filter((key, index) => keys.indexOf(key) !== index);
     if (duplicates.length > 0) {
-        console.warn('⚠️ Duplicate game dates found:', duplicates);
+        console.warn('⚠️ Duplicate date + game number found:', [...new Set(duplicates)]);
     }
 }
 
@@ -169,14 +185,42 @@ function calculateRunningTotals() {
         });
         
         // Record snapshot after this game
+        const multi = isMultiGameDate(game.date);
         history.push({
             date: game.date,
+            gameNumber: game.gameNumber,
+            label: multi ? `${game.date} (${game.gameNumber})` : game.date,
+            tooltip: multi ? `${game.date} · Game ${game.gameNumber}` : game.date,
             game: game.game,
             totals: { ...playerTotals }
         });
     });
     
     return history;
+}
+
+// ============================================
+// TOTAL MAHBLES IN PLAY
+// ============================================
+
+function formatMahbles(value) {
+    return String(Math.round(value * 100) / 100);
+}
+
+function renderTotalInPlay() {
+    const container = document.getElementById('total-in-play');
+    if (!container) return;
+
+    const total = allGames.reduce((sum, game) =>
+        sum + game.changes.reduce((s, change) => s + change.change, 0), 0);
+
+    container.innerHTML = `
+        <div class="total-in-play">
+            <span class="total-value">${formatMahbles(total)}</span>
+            <span class="total-label">Mahbles in play</span>
+            <span class="total-sub">across ${allPlayers.size} players &middot; ${allGames.length} games</span>
+        </div>
+    `;
 }
 
 // ============================================
@@ -269,7 +313,7 @@ function renderLineChart() {
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: history.map(h => h.date),
+            labels: history.map(h => h.label),
             datasets: datasets
         },
         options: {
@@ -293,7 +337,7 @@ function renderLineChart() {
                         font: { size: 14 },
                         callback: function(value, index) {
                             const snapshot = history[index];
-                            return [snapshot.date, snapshot.game];
+                            return [snapshot.label, snapshot.game];
                         }
                     }
                 }
@@ -312,7 +356,7 @@ function renderLineChart() {
                     callbacks: {
                         title: function(context) {
                             const snapshot = history[context[0].dataIndex];
-                            return `${snapshot.date} - ${snapshot.game}`;
+                            return `${snapshot.tooltip} - ${snapshot.game}`;
                         }
                     }
                 }
@@ -432,6 +476,28 @@ function renderStackedBarChart() {
 // GAME HISTORY TIMELINE
 // ============================================
 
+function renderGameCard(game) {
+    const number = isMultiGameDate(game.date)
+        ? `<span class="game-number">Game ${game.gameNumber}</span>`
+        : '';
+
+    return `
+        <div class="game-history-item card">
+            <div class="game-history-header">
+                <span class="game-date-group">
+                    <span class="game-date">📅 ${game.date}</span>
+                    ${number}
+                </span>
+                <span class="game-name">${game.game}</span>
+            </div>
+            <div class="game-history-results">
+                ${generateGameResults(game)}
+            </div>
+            ${game.notes ? `<div class="game-notes">📝 ${game.notes}</div>` : ''}
+        </div>
+    `;
+}
+
 function renderGameHistory() {
     const container = document.getElementById('game-history');
     if (!container) return;
@@ -441,18 +507,7 @@ function renderGameHistory() {
     let html = '<div class="game-history-list">';
     
     recentGames.forEach(game => {
-        html += `
-            <div class="game-history-item card">
-                <div class="game-history-header">
-                    <span class="game-date">📅 ${game.date}</span>
-                    <span class="game-name">${game.game}</span>
-                </div>
-                <div class="game-history-results">
-                    ${generateGameResults(game)}
-                </div>
-                ${game.notes ? `<div class="game-notes">📝 ${game.notes}</div>` : ''}
-            </div>
-        `;
+        html += renderGameCard(game);
     });
     
     html += '</div>';
@@ -501,18 +556,7 @@ function toggleAllGames() {
         let html = '<div class="game-history-list">';
         
         olderGames.forEach(game => {
-            html += `
-                <div class="game-history-item card">
-                    <div class="game-history-header">
-                        <span class="game-date">📅 ${game.date}</span>
-                        <span class="game-name">${game.game}</span>
-                    </div>
-                    <div class="game-history-results">
-                        ${generateGameResults(game)}
-                    </div>
-                    ${game.notes ? `<div class="game-notes">📝 ${game.notes}</div>` : ''}
-                </div>
-            `;
+            html += renderGameCard(game);
         });
         
         html += '</div>';
@@ -530,6 +574,7 @@ function toggleAllGames() {
 // ============================================
 
 function renderAllCharts() {
+    renderTotalInPlay();
     renderCurrentStandings();
     renderLineChart();
     renderStackedBarChart();

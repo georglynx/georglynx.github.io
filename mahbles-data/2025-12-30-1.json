@@ -1,0 +1,15 @@
+{
+  "date": "2025-12-30",
+  "gameNumber": 1,
+  "game": "Bobble League",
+  "changes": [
+    {
+      "player": "Jan",
+      "change": 1
+    },
+    {
+      "player": "Parker",
+      "change": 1
+    }
+  ]
+}

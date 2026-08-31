@@ -742,6 +742,37 @@ footer {
     margin-bottom: 0 !important;
 }
 
+.card-total {
+    text-align: center;
+}
+
+.total-in-play {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.total-value {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--accent-primary);
+}
+
+.total-label {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.total-sub {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
 .game-history-header {
     display: flex;
     justify-content: space-between;
@@ -751,10 +782,27 @@ footer {
     border-bottom: 1px solid var(--border-subtle);
 }
 
+.game-date-group {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
 .game-date {
     font-size: 0.9rem;
     color: var(--text-secondary);
     font-weight: 600;
+}
+
+.game-number {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--accent-primary);
+    background-color: rgba(255, 165, 0, 0.12);
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    padding: 1px 8px;
+    white-space: nowrap;
 }
 
 .game-name {
