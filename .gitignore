@@ -1,0 +1,23 @@
+# Secrets — .env holds ANTHROPIC_API_KEY for the calc function
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Netlify build output and local state
+.netlify/
+
+# Local Claude Code working files
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
