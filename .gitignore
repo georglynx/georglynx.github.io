@@ -11,6 +11,8 @@ node_modules/
 
 # Local Claude Code working files
 .claude/
+CLAUDE.md
+CLAUDE.local.md
 
 # Logs
 *.log
