@@ -773,6 +773,18 @@ footer {
     color: var(--text-muted);
 }
 
+.data-warning {
+    background-color: rgba(255, 107, 107, 0.12);
+    border: 1px solid rgba(255, 107, 107, 0.4);
+    border-left: 4px solid rgba(255, 107, 107, 0.8);
+    border-radius: 8px;
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
 .game-history-header {
     display: flex;
     justify-content: space-between;
@@ -803,6 +815,13 @@ footer {
     border-radius: 999px;
     padding: 1px 8px;
     white-space: nowrap;
+}
+
+/* A game sharing its number with another that night - order is unreliable */
+.game-number.game-number-conflict {
+    color: #ff6b6b;
+    background-color: rgba(255, 107, 107, 0.2);
+    border-color: rgba(255, 107, 107, 0.5);
 }
 
 .game-name {

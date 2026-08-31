@@ -12,6 +12,7 @@ const COLOR_POOL = [
 let playerColors = {};
 let gameColors = {};
 let gamesPerDate = {};
+let dataConflicts = new Map();
 
 // ============================================
 // DATA LOADING
@@ -114,12 +115,28 @@ function normalizeGameName(name) {
 }
 
 function validateData() {
-    // Several games per date is normal; the same date AND game number is a clash
-    const keys = allGames.map(g => `${g.date} #${g.gameNumber}`);
-    const duplicates = keys.filter((key, index) => keys.indexOf(key) !== index);
-    if (duplicates.length > 0) {
-        console.warn('⚠️ Duplicate date + game number found:', [...new Set(duplicates)]);
+    // Several games per date is normal; the same date AND game number is a clash,
+    // which usually means a game was submitted without bumping its number
+    const counts = {};
+    allGames.forEach(game => {
+        const key = gameKey(game);
+        counts[key] = (counts[key] || 0) + 1;
+    });
+
+    dataConflicts = new Map(Object.entries(counts).filter(([, count]) => count > 1));
+
+    if (dataConflicts.size > 0) {
+        console.warn('⚠️ Duplicate date + game number found:', [...dataConflicts.keys()]);
     }
+}
+
+function gameKey(game) {
+    return `${game.date} #${game.gameNumber}`;
+}
+
+// A game whose date + number is shared with another, so its order is unreliable
+function hasNumberConflict(game) {
+    return dataConflicts.has(gameKey(game));
 }
 
 function discoverPlayers() {
@@ -477,8 +494,11 @@ function renderStackedBarChart() {
 // ============================================
 
 function renderGameCard(game) {
+    const conflict = hasNumberConflict(game);
     const number = isMultiGameDate(game.date)
-        ? `<span class="game-number">Game ${game.gameNumber}</span>`
+        ? `<span class="game-number${conflict ? ' game-number-conflict' : ''}"${
+            conflict ? ' title="Another game that night shares this number, so the order may be wrong"' : ''
+          }>Game ${game.gameNumber}${conflict ? ' ⚠' : ''}</span>`
         : '';
 
     return `
@@ -498,13 +518,30 @@ function renderGameCard(game) {
     `;
 }
 
+function renderConflictBanner() {
+    if (dataConflicts.size === 0) return '';
+
+    const items = [...dataConflicts.entries()].map(([key, count]) => {
+        const [date, number] = key.split(' #');
+        return `${date} has ${count} games all numbered Game ${number}`;
+    });
+
+    return `
+        <div class="data-warning">
+            <strong>⚠ Ordering problem:</strong> ${items.join('; ')}.
+            Their order here and on the charts may be wrong —
+            give each one its own game number in the CMS to fix it.
+        </div>
+    `;
+}
+
 function renderGameHistory() {
     const container = document.getElementById('game-history');
     if (!container) return;
     
     const recentGames = allGames.slice(-5).reverse();
     
-    let html = '<div class="game-history-list">';
+    let html = renderConflictBanner() + '<div class="game-history-list">';
     
     recentGames.forEach(game => {
         html += renderGameCard(game);
