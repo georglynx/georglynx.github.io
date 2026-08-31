@@ -1,0 +1,19 @@
+{
+  "game": "Tetrio",
+  "date": "2026-08-11",
+  "changes": [
+    {
+      "player": "Syed",
+      "change": -3
+    },
+    {
+      "player": "Jan",
+      "change": 4
+    },
+    {
+      "player": "Parker",
+      "change": -1
+    }
+  ],
+  "notes": "Syed additionally bet his 2 mahble winnings from the previous game"
+}
