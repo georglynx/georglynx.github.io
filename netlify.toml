@@ -1,23 +1,19 @@
-# Netlify configuration for Cozzie Livs Calc
+# Netlify configuration for georglynx.com
 
 [build]
-  # No build command needed — static HTML + serverless functions
   publish = "."
+  # Bundle mahbles-data/*.json into one mahbles-all.json so the Mahbles page
+  # makes a single request instead of ~60 to the GitHub API on every visit.
+  command = "node build-mahbles.js"
 
-[functions]
-  # Where Netlify looks for serverless functions
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
-
-# Redirect /api/search to the Netlify function (cleaner URLs)
+# The Cozzie Livs Calc was archived (git tag `calc-archive`). Send old links home.
+# Two rules: the splat does not match a bare `/calc` on its own.
 [[redirects]]
-  from = "/api/search"
-  to = "/.netlify/functions/search"
-  status = 200
+  from = "/calc"
+  to = "/"
+  status = 301
 
-# SPA-style fallback for the calc page
-# (only if you want /calc/* to always load the page)
-# [[redirects]]
-#   from = "/calc/*"
-#   to = "/calc/index.html"
-#   status = 200
+[[redirects]]
+  from = "/calc/*"
+  to = "/"
+  status = 301

@@ -5,8 +5,8 @@ backend:
 # This is important - no local_backend or other backend options
 # Git Gateway handles everything through Netlify Identity
 
-media_folder: "images/reviews"
-public_folder: "/images/reviews"
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
 
 collections:
   # Mahbles Games Collection
@@ -63,52 +63,3 @@ collections:
         widget: "text"
         required: false
         hint: "Optional notes about this game (corrections, special rules, etc.)"
-
-  # Reviews Collection
-  - name: "reviews"
-    label: "Reviews"
-    label_singular: "Review"
-    folder: "reviews-data"
-    create: true
-    slug: "{{slug}}"
-    extension: json
-    format: json
-    identifier_field: name
-    summary: "{{name}} - {{rating}}★"
-    fields:
-      - label: "Name"
-        name: "name"
-        widget: "string"
-        hint: "Title of the game, movie, or book"
-        
-      - label: "Type"
-        name: "type"
-        widget: "select"
-        options: ["games", "movies", "books"]
-        
-      - label: "Rating"
-        name: "rating"
-        widget: "number"
-        value_type: "float"
-        min: 0
-        max: 5
-        step: 0.5
-        hint: "Rating out of 5"
-        
-      - label: "Review"
-        name: "review"
-        widget: "text"
-        hint: "Your review text"
-        
-      - label: "Cover Image"
-        name: "image"
-        widget: "image"
-        required: false
-        hint: "Optional cover art or poster"
-        
-      - label: "Date"
-        name: "date"
-        widget: "datetime"
-        format: "YYYY-MM-DD"
-        date_format: "YYYY-MM-DD"
-        time_format: false

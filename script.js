@@ -4,8 +4,8 @@
 
 let allGames = [];
 let allPlayers = new Set();
+// Spare colours for players not listed in player-colors.json
 const COLOR_POOL = [
-    '#008080', '#cf002dff', '#e98935ff', '#AE93E5', '#8b9ad9',
     '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
     '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C06C84'
 ];
@@ -20,14 +20,14 @@ let dataConflicts = new Map();
 
 async function loadGames() {
     try {
-        // Try aggregated file first
+        // mahbles-all.json is generated from mahbles-data/*.json at deploy time
+        // by build-mahbles.js (run it locally to preview)
         const response = await fetch('mahbles-all.json');
-        if (response.ok) {
-            allGames = await response.json();
-        } else {
-            await loadIndividualGames();
+        if (!response.ok) {
+            throw new Error(`mahbles-all.json returned ${response.status}`);
         }
-        
+        allGames = await response.json();
+
         await loadPlayerColors();
         await loadGameColors();
         normalizeData();
@@ -39,17 +39,6 @@ async function loadGames() {
         console.error('Error loading games:', error);
         useDefaultData();
     }
-}
-
-async function loadIndividualGames() {
-    const response = await fetch('https://api.github.com/repos/georglynx/georglynx.github.io/contents/mahbles-data');
-    const files = await response.json();
-    
-    const gamePromises = files
-        .filter(file => file.name.endsWith('.json'))
-        .map(file => fetch(file.download_url).then(r => r.json()));
-    
-    allGames = await Promise.all(gamePromises);
 }
 
 async function loadPlayerColors() {
@@ -622,7 +611,7 @@ function renderAllCharts() {
 // ============================================
 
 function useDefaultData() {
-    console.error('Failed to load game data. Please check that mahbles-data files exist.');
+    console.error('Failed to load game data. mahbles-all.json is missing - run `node build-mahbles.js`.');
     allGames = [];
     allPlayers = new Set();
     
@@ -631,7 +620,7 @@ function useDefaultData() {
         container.innerHTML = `
             <div class="card" style="text-align: center; color: #ff6b6b;">
                 <h3>⚠️ Unable to Load Game Data</h3>
-                <p>Could not find any game files. Please make sure mahbles-data folder exists.</p>
+                <p>Could not load mahbles-all.json. Please try again later.</p>
             </div>
         `;
     }

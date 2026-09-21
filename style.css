@@ -1,5 +1,4 @@
-/*import font*/
-@import url('https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap');
+/* Public Sans is loaded via <link> in each page's <head> (faster than @import) */
 
 /* ========================================
    GLOBAL STYLES
@@ -23,7 +22,7 @@
     --accent-hover: #ff8c00;
     --border-subtle: rgba(255, 255, 255, 0.1);
     --border-hover: rgba(255, 255, 255, 0.2);
-    
+
     /* Spacing */
     --spacing-xs: 8px;
     --spacing-sm: 16px;
@@ -59,6 +58,7 @@ a {
 
 /* ========================================
    NAVIGATION BAR
+   (not used yet - pages are unlinked for now)
    ======================================== */
 
 .navbar {
@@ -256,69 +256,6 @@ a {
     text-decoration: underline;
 }
 
-.hero-buttons {
-    display: flex;
-    gap: var(--spacing-sm);
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-/* ========================================
-   BUTTONS
-   ======================================== */
-
-.btn {
-    display: inline-block;
-    padding: 12px 24px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    border: none;
-}
-
-.btn-primary {
-    background-color: var(--accent-primary);
-    color: #ffffff;
-}
-
-.btn-primary:hover {
-    background-color: var(--accent-hover);
-    color: #ffffff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
-}
-
-.btn-secondary {
-    background-color: transparent;
-    color: var(--accent-primary);
-    border: 2px solid var(--accent-primary);
-}
-
-.btn-secondary:hover {
-    background-color: var(--accent-primary);
-    color: #ffffff;
-}
-
-button[type="submit"] {
-    background-color: var(--accent-primary);
-    color: #ffffff;
-    border: none;
-    border-radius: 6px;
-    padding: 12px var(--spacing-sm);
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    width: 100%;
-}
-
-button[type="submit"]:hover {
-    background-color: var(--accent-hover);
-    color: #ffffff;
-}
-
 /* ========================================
    CARDS
    ======================================== */
@@ -339,53 +276,6 @@ button[type="submit"]:hover {
 .card > h2,
 .card > h3 {
     margin-top: 0;
-}
-
-/* ========================================
-   PROJECT CARDS
-   ======================================== */
-
-.project-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: var(--spacing-md);
-    margin-top: var(--spacing-md);
-}
-
-.project-card {
-    background-color: var(--bg-tertiary);
-    padding: var(--spacing-md);
-    border-radius: 8px;
-    border: 1px solid var(--border-subtle);
-    transition: all 0.3s ease;
-}
-
-.project-card:hover {
-    border-color: var(--accent-primary);
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(187, 134, 252, 0.2);
-}
-
-.project-card h3 {
-    margin-top: 0;
-    margin-bottom: var(--spacing-xs);
-    color: var(--text-primary);
-}
-
-.project-card p {
-    color: var(--text-secondary);
-    margin-bottom: var(--spacing-sm);
-    font-size: 0.9rem;
-}
-
-.project-link {
-    color: var(--accent-primary);
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.project-link:hover {
-    color: var(--accent-hover);
 }
 
 /* ========================================
@@ -425,42 +315,6 @@ button[type="submit"]:hover {
 }
 
 /* ========================================
-   FORMS
-   ======================================== */
-
-.form-group {
-    margin-bottom: var(--spacing-sm);
-    display: flex;
-    flex-direction: column;
-}
-
-.form-group label {
-    margin-bottom: 6px;
-    font-weight: bold;
-    color: var(--text-secondary);
-}
-
-input[type="date"],
-input[type="number"],
-input[type="text"],
-input[type="email"],
-select {
-    background-color: var(--bg-tertiary);
-    color: var(--text-primary);
-    border: 1px solid var(--border-hover);
-    border-radius: 6px;
-    padding: 10px;
-    font-family: 'Public Sans', sans-serif;
-    font-size: 1rem;
-}
-
-input:focus,
-select:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-}
-
-/* ========================================
    FOOTER
    ======================================== */
 
@@ -477,11 +331,6 @@ footer {
     margin: var(--spacing-xs) 0;
 }
 
-.footer-text {
-    font-size: 0.9rem;
-    margin: var(--spacing-xs) 0;
-}
-
 /* ========================================
    RESPONSIVE DESIGN
    ======================================== */
@@ -491,239 +340,8 @@ footer {
         font-size: 2rem;
     }
 
-    .hero-buttons {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .btn {
-        width: 100%;
-    }
-
-    .project-grid {
-        grid-template-columns: 1fr;
-    }
-
     main {
         padding: var(--spacing-sm);
-    }
-}
-
-/* ========================================
-   REVIEWS PAGE
-   ======================================== */
-
-.filter-container {
-    display: flex;
-    gap: var(--spacing-xs);
-    margin-bottom: var(--spacing-lg);
-    flex-wrap: wrap;
-}
-
-.filter-btn {
-    padding: 10px 20px;
-    background-color: var(--bg-secondary);
-    color: var(--text-secondary);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.filter-btn:hover {
-    background-color: var(--bg-tertiary);
-    border-color: var(--border-hover);
-    color: var(--text-primary);
-}
-
-.filter-btn.active {
-    background-color: var(--accent-primary);
-    color: #ffffff;
-    border-color: var(--accent-primary);
-}
-
-.review-card {
-    margin-bottom: var(--spacing-md);
-}
-
-.review-header {
-    display: flex;
-    gap: var(--spacing-sm);
-    margin-bottom: var(--spacing-sm);
-}
-
-.review-image-container {
-    flex-shrink: 0;
-    width: 100px;
-    height: 140px;
-    border-radius: 8px;
-    overflow: hidden;
-    background-color: var(--bg-tertiary);
-}
-
-.review-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.review-image-placeholder {
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(135deg, #ff6b6b, #ffa500);
-    opacity: 0.3;
-}
-
-.review-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.review-info h3 {
-    margin: 0 0 var(--spacing-xs) 0;
-    font-size: 1.2rem;
-}
-
-.review-meta {
-    display: flex;
-    gap: var(--spacing-sm);
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.review-type-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    background-color: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.review-rating {
-    color: #ffa500;
-    font-size: 1.1rem;
-    letter-spacing: 2px;
-}
-
-.rating-number {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    margin-left: 6px;
-}
-
-.review-text {
-    color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: var(--spacing-xs);
-}
-
-.review-date {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    margin: 0;
-}
-
-/* ========================================
-   GAME DEV PAGE
-   ======================================== */
-
-.projects-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: var(--spacing-md);
-}
-
-.project-card-large {
-    background-color: var(--bg-secondary);
-    border-radius: 12px;
-    border: 1px solid var(--border-subtle);
-    overflow: hidden;
-    transition: all 0.3s ease;
-}
-
-.project-card-large:hover {
-    border-color: var(--accent-primary);
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2);
-}
-
-.project-image {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-}
-
-.project-image-placeholder {
-    width: 100%;
-    height: 200px;
-    background: linear-gradient(135deg, #ff6b6b, #ffa500);
-    opacity: 0.3;
-}
-
-.project-content {
-    padding: var(--spacing-md);
-}
-
-.project-content h3 {
-    margin-top: 0;
-    margin-bottom: var(--spacing-xs);
-}
-
-.project-content p {
-    color: var(--text-secondary);
-    margin-bottom: var(--spacing-sm);
-}
-
-.project-tags {
-    display: flex;
-    gap: var(--spacing-xs);
-    flex-wrap: wrap;
-    margin-bottom: var(--spacing-sm);
-}
-
-.tag {
-    padding: 4px 10px;
-    background-color: var(--bg-tertiary);
-    color: var(--text-secondary);
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.project-content .project-link {
-    color: var(--accent-primary);
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.project-content .project-link:hover {
-    color: var(--accent-hover);
-}
-
-/* Mobile adjustments for reviews */
-@media (max-width: 600px) {
-    .review-header {
-        flex-direction: column;
-    }
-
-    .review-image-container {
-        width: 100%;
-        height: 200px;
-    }
-
-    .filter-container {
-        justify-content: center;
-    }
-
-    .projects-grid {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -882,6 +500,7 @@ footer {
     font-style: italic;
 }
 
+/* "Show All Games" toggle button */
 .btn-secondary {
     width: 100%;
     margin-top: var(--spacing-sm);
@@ -927,4 +546,3 @@ section.card:has(#marbleChart) {
         min-height: 450px;
     }
 }
-
