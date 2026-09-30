@@ -1,0 +1,19 @@
+{
+  "date": "2026-09-30",
+  "gameNumber": 4,
+  "game": "Tetrio",
+  "changes": [
+    {
+      "player": "Parker",
+      "change": 2
+    },
+    {
+      "player": "George",
+      "change": -1
+    },
+    {
+      "player": "Syed",
+      "change": -1
+    }
+  ]
+}
